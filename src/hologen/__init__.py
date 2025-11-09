@@ -1,35 +1,39 @@
-"""Core public API for the hologen package."""
+"""Holography dataset generation toolkit."""
 
-from hologen.converters import (
+from .converters import (
     HologramDatasetGenerator,
     ObjectDomainProducer,
     ObjectToHologramConverter,
-    default_converter,
-    default_object_producer,
-    generate_dataset,
 )
-from hologen.types import (
+from .shapes import CircleGenerator, RectangleGenerator, RingGenerator
+from .types import (
     GridSpec,
     HologramSample,
     HolographyConfig,
     HolographyMethod,
     ObjectSample,
-    OpticalConfig,
     OffAxisCarrier,
+    OpticalConfig,
 )
+from .utils.io import NumpyDatasetWriter
 
 __all__ = [
+    # Types
     "GridSpec",
-    "HologramSample",
+    "OpticalConfig",
+    "OffAxisCarrier",
     "HolographyConfig",
     "HolographyMethod",
     "ObjectSample",
-    "OpticalConfig",
-    "OffAxisCarrier",
+    "HologramSample",
+    # Converters
     "ObjectDomainProducer",
     "ObjectToHologramConverter",
     "HologramDatasetGenerator",
-    "default_object_producer",
-    "default_converter",
-    "generate_dataset",
+    # Shapes
+    "CircleGenerator",
+    "RectangleGenerator",
+    "RingGenerator",
+    # IO
+    "NumpyDatasetWriter",
 ]
