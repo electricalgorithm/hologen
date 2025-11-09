@@ -21,6 +21,8 @@ dependencies = [
 dev = [
     "black>=24.0",
     "ruff>=0.2",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
 ]
 
 [tool.black]
@@ -35,3 +37,39 @@ ignore = ["E203", "E266", "E501", "B008"]
 
 [tool.ruff.isort]
 known-first-party = ["hologen"]
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/hologen",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=90",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["src/hologen"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
