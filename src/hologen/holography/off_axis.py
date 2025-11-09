@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from .propagation import angular_spectrum_propagate
-from ..types import ArrayComplex, ArrayFloat, HolographyConfig, HolographyStrategy
-from ..utils.math import gaussian_blur
+from hologen.holography.propagation import angular_spectrum_propagate
+from hologen.types import ArrayComplex, ArrayFloat, HolographyConfig, HolographyStrategy
+from hologen.utils.math import gaussian_blur
 
 
 def _object_to_complex(object_field: ArrayFloat) -> ArrayComplex:

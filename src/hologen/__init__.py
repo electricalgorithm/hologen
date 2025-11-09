@@ -1,6 +1,6 @@
 """Core public API for the hologen package."""
 
-from .converters import (
+from hologen.converters import (
     HologramDatasetGenerator,
     ObjectDomainProducer,
     ObjectToHologramConverter,
@@ -8,7 +8,7 @@ from .converters import (
     default_object_producer,
     generate_dataset,
 )
-from .types import (
+from hologen.types import (
     GridSpec,
     HologramSample,
     HolographyConfig,

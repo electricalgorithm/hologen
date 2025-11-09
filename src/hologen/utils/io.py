@@ -9,8 +9,8 @@ from typing import Iterable
 import numpy as np
 from PIL import Image
 
-from ..types import HologramSample
-from .math import normalize_image
+from hologen.types import HologramSample
+from hologen.utils.math import normalize_image
 
 
 @dataclass(slots=True)

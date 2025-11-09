@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..types import ArrayComplex, GridSpec, OpticalConfig
+from hologen.types import ArrayComplex, GridSpec, OpticalConfig
 
 
 def angular_spectrum_propagate(

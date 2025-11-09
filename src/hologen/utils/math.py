@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from ..types import ArrayFloat, GridSpec
+from hologen.types import ArrayFloat, GridSpec
 
 
 @dataclass(slots=True)

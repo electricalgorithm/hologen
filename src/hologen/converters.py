@@ -8,10 +8,10 @@ from typing import Iterable, cast
 
 from numpy.random import Generator
 
-from .holography.inline import InlineHolographyStrategy
-from .holography.off_axis import OffAxisHolographyStrategy
-from .shapes import available_generators
-from .types import (
+from hologen.holography.inline import InlineHolographyStrategy
+from hologen.holography.off_axis import OffAxisHolographyStrategy
+from hologen.shapes import available_generators
+from hologen.types import (
     ArrayFloat,
     DatasetGenerator,
     DatasetWriter,
@@ -23,7 +23,7 @@ from .types import (
     ObjectSample,
     ObjectShapeGenerator,
 )
-from .utils.math import normalize_image
+from hologen.utils.math import normalize_image
 
 
 @dataclass(slots=True)

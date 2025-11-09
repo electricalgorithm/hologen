@@ -6,7 +6,7 @@ from typing import Iterable
 import numpy as np
 from numpy.random import Generator
 
-from .types import ArrayFloat, GridSpec, ObjectShapeGenerator
+from hologen.types import ArrayFloat, GridSpec, ObjectShapeGenerator
 
 
 @dataclass(slots=True)
