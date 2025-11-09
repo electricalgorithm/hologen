@@ -112,7 +112,10 @@ def main() -> None:
     generator = HologramDatasetGenerator(object_producer=producer, converter=converter)
     writer = NumpyDatasetWriter(save_preview=not args.no_preview)
 
-    writer.save(samples=generator.generate(count=args.samples, config=config, rng=rng), output_dir=args.output)
+    writer.save(
+        samples=generator.generate(count=args.samples, config=config, rng=rng),
+        output_dir=args.output,
+    )
 
 
 if __name__ == "__main__":
