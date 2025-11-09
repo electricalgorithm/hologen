@@ -226,7 +226,14 @@ class TestDefaultObjectProducer:
         """Test that default producer has expected generators."""
         producer = default_object_producer()
         names = {gen.name for gen in producer.shape_generators}
-        expected_names = {"circle", "rectangle", "ring"}
+        expected_names = {
+            "circle",
+            "rectangle",
+            "ring",
+            "circle_checker",
+            "rectangle_checker",
+            "ellipse_checker",
+        }
         assert names == expected_names
 
 
