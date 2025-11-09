@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Reorganize inline holography dataset into subdirectories.
+# Reorganize inline holography dataset into subdirectories, preserving shape types.
 # Expected structure after running:
 # object/, hologram/, reconstruction/, npz/
 
 set -euo pipefail
 
-DATASET_DIR="../inline-holography-dataset"
+DATASET_DIR="examples"
 cd "$DATASET_DIR" || { echo "Directory not found: $DATASET_DIR"; exit 1; }
 
 # Create target subdirectories if they don't exist
@@ -17,20 +17,27 @@ for file in sample_*; do
     [[ -d "$file" ]] && continue
 
     # Extract base sample ID (e.g., sample_00001)
-    base=$(echo "$file" | sed -E 's/^(sample_[0-9]+).*$/\1/')
+    sample_id=$(echo "$file" | sed -E 's/^(sample_[0-9]+).*$/\1/')
+
+    # Extract the shape/type portion between sample ID and type suffix
+    shape_type=$(echo "$file" | sed -E 's/^sample_[0-9]+_?(.*)_?(object|hologram|reconstruction)?\.png$/\1/; s/\.npz$//')
+
+    # Compose new filename with sample ID + shape_type
+    new_name="${sample_id}"
+    [[ -n "$shape_type" ]] && new_name="${new_name}_${shape_type}"
 
     case "$file" in
         *_object.png)
-            cp "$file" "object/${base}.png"
+            cp "$file" "object/${new_name}.png"
             ;;
         *_hologram.png)
-            cp "$file" "hologram/${base}.png"
+            cp "$file" "hologram/${new_name}.png"
             ;;
         *_reconstruction.png)
-            cp "$file" "reconstruction/${base}.png"
+            cp "$file" "reconstruction/${new_name}.png"
             ;;
         *.npz)
-            cp "$file" "npz/${base}.npz"
+            cp "$file" "npz/${new_name}.npz"
             ;;
         *)
             echo "Skipping unknown file: $file"
