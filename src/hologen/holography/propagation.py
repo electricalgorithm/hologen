@@ -72,12 +72,16 @@ def angular_spectrum_propagate(
     # Propagating components: phase delay exp(i k_z z)
     if np.any(positive_mask):
         kz = np.sqrt(argument, where=positive_mask, out=np.zeros_like(argument))
-        propagation_kernel[positive_mask] = np.exp(1j * k * distance * kz[positive_mask])
+        propagation_kernel[positive_mask] = np.exp(
+            1j * k * distance * kz[positive_mask]
+        )
 
     # Evanescent components: exponential decay with distance magnitude
     if np.any(~positive_mask):
         decay = np.sqrt(-argument, where=~positive_mask, out=np.zeros_like(argument))
-        propagation_kernel[~positive_mask] = np.exp(-k * np.abs(distance) * decay[~positive_mask])
+        propagation_kernel[~positive_mask] = np.exp(
+            -k * np.abs(distance) * decay[~positive_mask]
+        )
 
     # Apply kernel in the spatial-frequency domain
     spectrum = np.fft.fft2(field)

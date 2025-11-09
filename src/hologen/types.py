@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Protocol
 
 import numpy as np
 import numpy.typing as npt
 from numpy.random import Generator
-
 
 ArrayFloat = npt.NDArray[np.float64]
 ArrayComplex = npt.NDArray[np.complex128]
@@ -125,7 +125,9 @@ class ObjectShapeGenerator(Protocol):
 class HolographyStrategy(Protocol):
     """Protocol describing hologram generation and reconstruction operations."""
 
-    def create_hologram(self, object_field: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
+    def create_hologram(
+        self, object_field: ArrayFloat, config: HolographyConfig
+    ) -> ArrayFloat:
         """Create a hologram from an object-domain amplitude field."""
 
     def reconstruct(self, hologram: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
@@ -142,5 +144,7 @@ class DatasetWriter(Protocol):
 class DatasetGenerator(Protocol):
     """Protocol for dataset generation routines."""
 
-    def generate(self, count: int, config: HolographyConfig, rng: Generator) -> Iterable[HologramSample]:
+    def generate(
+        self, count: int, config: HolographyConfig, rng: Generator
+    ) -> Iterable[HologramSample]:
         """Produce holography samples."""

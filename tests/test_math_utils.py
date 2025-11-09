@@ -5,7 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from hologen.utils.math import FourierGrid, gaussian_blur, make_fourier_grid, normalize_image
+from hologen.utils.math import (
+    FourierGrid,
+    gaussian_blur,
+    make_fourier_grid,
+    normalize_image,
+)
 
 
 class TestNormalizeImage:
@@ -86,25 +91,6 @@ class TestGaussianBlur:
         assert blurred[5, 5] < 0.5
         # Energy may be lost due to edge effects with large sigma
         assert blurred.sum() > 0.5  # Should retain reasonable amount of energy
-        assert blurred.shape == image.shape
-
-    def test_large_sigma(self) -> None:
-        """Test blur with large sigma."""
-        image = np.zeros((10, 10), dtype=np.float64)
-        image[5, 5] = 1.0
-        blurred = gaussian_blur(image, sigma=3.0)
-        assert blurred[5, 5] < 0.5
-        assert blurred.sum() == pytest.approx(1.0, abs=1e-3)  # More lenient tolerance
-        assert blurred.shape == image.shape
-
-    def test_large_sigma(self) -> None:
-        """Test blur with large sigma."""
-        image = np.zeros((10, 10), dtype=np.float64)
-        image[5, 5] = 1.0
-        blurred = gaussian_blur(image, sigma=3.0)
-        assert blurred[5, 5] < 0.5
-        # Energy may be lost due to edge effects with large sigma
-        assert blurred.sum() > 0.5  # Should retain reasonable amount of energy
 
 
 class TestFourierGrid:
@@ -153,9 +139,10 @@ class TestMakeFourierGrid:
     def test_symmetry(self) -> None:
         """Test frequency grid symmetry for even dimensions."""
         from hologen.types import GridSpec
+
         grid = GridSpec(height=4, width=4, pixel_pitch=1e-6)
         fourier_grid = make_fourier_grid(grid)
-        
+
         # Check that negative frequencies are present
         assert np.any(fourier_grid.fx < 0)
         assert np.any(fourier_grid.fy < 0)

@@ -61,14 +61,18 @@ class TestOffAxisCarrier:
 
     def test_slots(self) -> None:
         """Test that OffAxisCarrier uses slots."""
-        carrier = OffAxisCarrier(frequency_x=1000.0, frequency_y=1000.0, gaussian_width=300.0)
+        carrier = OffAxisCarrier(
+            frequency_x=1000.0, frequency_y=1000.0, gaussian_width=300.0
+        )
         assert hasattr(carrier, "__slots__")
 
 
 class TestHolographyConfig:
     """Test HolographyConfig dataclass."""
 
-    def test_inline_config(self, grid_spec: GridSpec, optical_config: OpticalConfig) -> None:
+    def test_inline_config(
+        self, grid_spec: GridSpec, optical_config: OpticalConfig
+    ) -> None:
         """Test inline holography configuration."""
         config = HolographyConfig(
             grid=grid_spec,

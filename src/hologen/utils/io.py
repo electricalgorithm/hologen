@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 from PIL import Image
@@ -53,7 +53,9 @@ class NumpyDatasetWriter:
             reconstruction_image = normalize_image(sample.reconstruction)
 
             self._write_png(base_path.with_name(prefix + "_object.png"), object_image)
-            self._write_png(base_path.with_name(prefix + "_hologram.png"), hologram_image)
+            self._write_png(
+                base_path.with_name(prefix + "_hologram.png"), hologram_image
+            )
             self._write_png(
                 base_path.with_name(prefix + "_reconstruction.png"),
                 reconstruction_image,

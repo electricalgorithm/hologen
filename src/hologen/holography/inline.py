@@ -23,7 +23,9 @@ def _field_to_intensity(field: ArrayComplex) -> ArrayFloat:
 class InlineHolographyStrategy(HolographyStrategy):
     """Implement inline hologram generation and reconstruction."""
 
-    def create_hologram(self, object_field: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
+    def create_hologram(
+        self, object_field: ArrayFloat, config: HolographyConfig
+    ) -> ArrayFloat:
         """Generate an inline hologram from an object-domain amplitude field."""
 
         complex_object = _object_to_complex(object_field)

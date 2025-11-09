@@ -59,7 +59,9 @@ def normalize_image(image: ArrayFloat) -> ArrayFloat:
     return normalized.astype(np.float64)
 
 
-def _convolve_axis(data: ArrayFloat, kernel: NDArray[np.float64], axis: int) -> ArrayFloat:
+def _convolve_axis(
+    data: ArrayFloat, kernel: NDArray[np.float64], axis: int
+) -> ArrayFloat:
     """Convolve data with a one-dimensional kernel along a specific axis.
 
     Args:

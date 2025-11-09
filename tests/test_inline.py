@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from hologen.holography.inline import (
     InlineHolographyStrategy,
@@ -20,7 +19,9 @@ class TestObjectToComplex:
         field = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
         result = _object_to_complex(field)
         assert result.dtype == np.complex128
-        expected = np.array([[1.0+0j, 2.0+0j], [3.0+0j, 4.0+0j]], dtype=np.complex128)
+        expected = np.array(
+            [[1.0 + 0j, 2.0 + 0j], [3.0 + 0j, 4.0 + 0j]], dtype=np.complex128
+        )
         np.testing.assert_array_equal(result, expected)
 
     def test_shape_preservation(self) -> None:
@@ -33,7 +34,9 @@ class TestObjectToComplex:
         """Ensure values are preserved (imaginary parts added as 0)."""
         field = np.array([[1.5, -2.0], [0.0, 4.25]], dtype=np.float64)
         result = _object_to_complex(field)
-        expected = np.array([[1.5+0j, -2.0+0j], [0.0+0j, 4.25+0j]], dtype=np.complex128)
+        expected = np.array(
+            [[1.5 + 0j, -2.0 + 0j], [0.0 + 0j, 4.25 + 0j]], dtype=np.complex128
+        )
         np.testing.assert_array_equal(result, expected)
 
 
@@ -42,7 +45,9 @@ class TestFieldToIntensity:
 
     def test_intensity_calculation(self) -> None:
         """Test intensity calculation from complex field."""
-        field = np.array([[1.0+1j, 2.0+0j], [0.0+3j, 1.0-1j]], dtype=np.complex128)
+        field = np.array(
+            [[1.0 + 1j, 2.0 + 0j], [0.0 + 3j, 1.0 - 1j]], dtype=np.complex128
+        )
         result = _field_to_intensity(field)
         expected = np.array([[2.0, 4.0], [9.0, 2.0]], dtype=np.float64)
         np.testing.assert_allclose(result, expected)
@@ -72,9 +77,7 @@ class TestFieldToIntensity:
 class TestInlineHolographyStrategy:
     """Test InlineHolographyStrategy class."""
 
-    def test_create_hologram_shape(
-        self, inline_config, sample_object_field
-    ) -> None:
+    def test_create_hologram_shape(self, inline_config, sample_object_field) -> None:
         """Test that create_hologram returns correct shape."""
         strategy = InlineHolographyStrategy()
         hologram = strategy.create_hologram(sample_object_field, inline_config)
@@ -97,6 +100,7 @@ class TestInlineHolographyStrategy:
         hologram1 = strategy.create_hologram(sample_object_field, inline_config)
         hologram2 = strategy.create_hologram(sample_object_field, inline_config)
         np.testing.assert_array_equal(hologram1, hologram2)
+
     def test_reconstruct_shape(self, inline_config, sample_object_field) -> None:
         """Test that reconstruct returns correct shape."""
         strategy = InlineHolographyStrategy()
@@ -112,7 +116,9 @@ class TestInlineHolographyStrategy:
         reconstruction = strategy.reconstruct(hologram, inline_config)
         assert np.all(reconstruction >= 0.0)
 
-    def test_reconstruct_deterministic(self, inline_config, sample_object_field) -> None:
+    def test_reconstruct_deterministic(
+        self, inline_config, sample_object_field
+    ) -> None:
         """Test that reconstruction is deterministic."""
         strategy = InlineHolographyStrategy()
         hologram = strategy.create_hologram(sample_object_field, inline_config)
@@ -128,6 +134,7 @@ class TestInlineHolographyStrategy:
 
         # Normalize both for comparison
         from hologen.utils.math import normalize_image
+
         orig_norm = normalize_image(sample_object_field)
         recon_norm = normalize_image(reconstruction)
 
@@ -138,7 +145,9 @@ class TestInlineHolographyStrategy:
     def test_zero_field_handling(self, inline_config) -> None:
         """Test handling of zero object field."""
         strategy = InlineHolographyStrategy()
-        zero_field = np.zeros((inline_config.grid.height, inline_config.grid.width), dtype=np.float64)
+        zero_field = np.zeros(
+            (inline_config.grid.height, inline_config.grid.width), dtype=np.float64
+        )
         hologram = strategy.create_hologram(zero_field, inline_config)
         reconstruction = strategy.reconstruct(hologram, inline_config)
 
@@ -152,7 +161,11 @@ class TestInlineHolographyStrategy:
         """Test reconstruction with negative hologram values."""
         strategy = InlineHolographyStrategy()
         # Create hologram with some negative values matching grid size
-        hologram = np.full((inline_config.grid.height, inline_config.grid.width), -1.0, dtype=np.float64)
+        hologram = np.full(
+            (inline_config.grid.height, inline_config.grid.width),
+            -1.0,
+            dtype=np.float64,
+        )
         hologram[0, 0] = 2.0
         reconstruction = strategy.reconstruct(hologram, inline_config)
 
@@ -164,7 +177,9 @@ class TestInlineHolographyStrategy:
     def test_uniform_field(self, inline_config) -> None:
         """Test with uniform object field."""
         strategy = InlineHolographyStrategy()
-        uniform_field = np.ones((inline_config.grid.height, inline_config.grid.width), dtype=np.float64)
+        uniform_field = np.ones(
+            (inline_config.grid.height, inline_config.grid.width), dtype=np.float64
+        )
         hologram = strategy.create_hologram(uniform_field, inline_config)
         reconstruction = strategy.reconstruct(hologram, inline_config)
 
@@ -177,7 +192,9 @@ class TestInlineHolographyStrategy:
         """Test that energy scales appropriately with field amplitude."""
         strategy = InlineHolographyStrategy()
 
-        field1 = np.ones((inline_config.grid.height, inline_config.grid.width), dtype=np.float64)
+        field1 = np.ones(
+            (inline_config.grid.height, inline_config.grid.width), dtype=np.float64
+        )
         field2 = 2.0 * field1
 
         hologram1 = strategy.create_hologram(field1, inline_config)
@@ -189,16 +206,3 @@ class TestInlineHolographyStrategy:
 
         # Allow for some numerical tolerance
         assert energy2 > energy1  # Higher amplitude should give more energy
-
-    def test_zero_field_handling(self, inline_config) -> None:
-        """Test that zero field is handled gracefully."""
-        strategy = InlineHolographyStrategy()
-        zero_field = np.zeros((inline_config.grid.height, inline_config.grid.width), dtype=np.float64)
-        hologram = strategy.create_hologram(zero_field, inline_config)
-        reconstruction = strategy.reconstruct(hologram, inline_config)
-
-        # Should handle gracefully without errors
-        assert hologram.shape == zero_field.shape
-        assert reconstruction.shape == zero_field.shape
-        assert np.all(np.isfinite(hologram))
-        assert np.all(np.isfinite(reconstruction))

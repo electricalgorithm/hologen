@@ -51,7 +51,9 @@ def _fourier_filter(
     freq_y = np.fft.fftfreq(grid[0], d=pixel_pitch)
     freq_x = np.fft.fftfreq(grid[1], d=pixel_pitch)
     fy_mesh, fx_mesh = np.meshgrid(freq_y, freq_x, indexing="ij")
-    exponent = -((fx_mesh - carrier_x) ** 2 + (fy_mesh - carrier_y) ** 2) / (2.0 * sigma**2)
+    exponent = -((fx_mesh - carrier_x) ** 2 + (fy_mesh - carrier_y) ** 2) / (
+        2.0 * sigma**2
+    )
     mask = np.exp(exponent)
     filtered = spectrum * mask
     return np.fft.ifft2(filtered)
@@ -60,7 +62,9 @@ def _fourier_filter(
 class OffAxisHolographyStrategy(HolographyStrategy):
     """Implement off-axis hologram generation and reconstruction."""
 
-    def create_hologram(self, object_field: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
+    def create_hologram(
+        self, object_field: ArrayFloat, config: HolographyConfig
+    ) -> ArrayFloat:
         """Generate an off-axis hologram from an object-domain amplitude field."""
 
         if config.carrier is None:

@@ -151,7 +151,11 @@ class TestRingGenerator:
     def test_creation(self) -> None:
         """Test RingGenerator creation."""
         generator = RingGenerator(
-            name="ring", min_radius=0.1, max_radius=0.3, min_thickness=0.1, max_thickness=0.2
+            name="ring",
+            min_radius=0.1,
+            max_radius=0.3,
+            min_thickness=0.1,
+            max_thickness=0.2,
         )
         assert generator.name == "ring"
         assert generator.min_radius == pytest.approx(0.1)
@@ -162,7 +166,11 @@ class TestRingGenerator:
     def test_generate_shape(self, grid_spec: GridSpec, rng: Generator) -> None:
         """Test ring generation produces correct shape."""
         generator = RingGenerator(
-            name="ring", min_radius=0.15, max_radius=0.25, min_thickness=0.1, max_thickness=0.2
+            name="ring",
+            min_radius=0.15,
+            max_radius=0.25,
+            min_thickness=0.1,
+            max_thickness=0.2,
         )
         result = generator.generate(grid_spec, rng)
         assert result.shape == (grid_spec.height, grid_spec.width)
@@ -171,7 +179,11 @@ class TestRingGenerator:
     def test_generate_binary_values(self, grid_spec: GridSpec, rng: Generator) -> None:
         """Test that generated ring has binary values."""
         generator = RingGenerator(
-            name="ring", min_radius=0.15, max_radius=0.25, min_thickness=0.1, max_thickness=0.2
+            name="ring",
+            min_radius=0.15,
+            max_radius=0.25,
+            min_thickness=0.1,
+            max_thickness=0.2,
         )
         result = generator.generate(grid_spec, rng)
         unique_values = np.unique(result)
@@ -183,7 +195,11 @@ class TestRingGenerator:
     def test_generate_deterministic(self, grid_spec: GridSpec) -> None:
         """Test that same seed produces same result."""
         generator = RingGenerator(
-            name="ring", min_radius=0.15, max_radius=0.25, min_thickness=0.1, max_thickness=0.2
+            name="ring",
+            min_radius=0.15,
+            max_radius=0.25,
+            min_thickness=0.1,
+            max_thickness=0.2,
         )
         rng1 = np.random.default_rng(seed=789)
         rng2 = np.random.default_rng(seed=789)
@@ -194,7 +210,11 @@ class TestRingGenerator:
     def test_inner_radius_constraint(self, grid_spec: GridSpec, rng: Generator) -> None:
         """Test that inner radius is constrained to minimum value."""
         generator = RingGenerator(
-            name="ring", min_radius=0.01, max_radius=0.02, min_thickness=0.9, max_thickness=1.0
+            name="ring",
+            min_radius=0.01,
+            max_radius=0.02,
+            min_thickness=0.9,
+            max_thickness=1.0,
         )
         result = generator.generate(grid_spec, rng)
         # Should still produce valid output even with extreme thickness
@@ -203,7 +223,11 @@ class TestRingGenerator:
     def test_slots(self) -> None:
         """Test that RingGenerator uses slots."""
         generator = RingGenerator(
-            name="ring", min_radius=0.1, max_radius=0.2, min_thickness=0.1, max_thickness=0.2
+            name="ring",
+            min_radius=0.1,
+            max_radius=0.2,
+            min_thickness=0.1,
+            max_thickness=0.2,
         )
         assert hasattr(generator, "__slots__")
 
@@ -215,7 +239,7 @@ class TestAvailableGenerators:
         """Test that available_generators returns generator instances."""
         generators = list(available_generators())
         assert len(generators) == 3
-        
+
         names = [gen.name for gen in generators]
         assert "circle" in names
         assert "rectangle" in names
@@ -224,11 +248,11 @@ class TestAvailableGenerators:
     def test_generator_types(self) -> None:
         """Test that returned generators are correct types."""
         generators = list(available_generators())
-        
+
         circle_gen = next(gen for gen in generators if gen.name == "circle")
         rectangle_gen = next(gen for gen in generators if gen.name == "rectangle")
         ring_gen = next(gen for gen in generators if gen.name == "ring")
-        
+
         assert isinstance(circle_gen, CircleGenerator)
         assert isinstance(rectangle_gen, RectangleGenerator)
         assert isinstance(ring_gen, RingGenerator)
@@ -236,7 +260,7 @@ class TestAvailableGenerators:
     def test_generator_parameters(self) -> None:
         """Test that generators have reasonable parameters."""
         generators = list(available_generators())
-        
+
         for gen in generators:
             if isinstance(gen, CircleGenerator):
                 assert 0 < gen.min_radius < gen.max_radius < 1
@@ -249,7 +273,7 @@ class TestAvailableGenerators:
     def test_generators_functional(self, grid_spec: GridSpec, rng: Generator) -> None:
         """Test that all generators can produce valid output."""
         generators = list(available_generators())
-        
+
         for gen in generators:
             result = gen.generate(grid_spec, rng)
             assert result.shape == (grid_spec.height, grid_spec.width)

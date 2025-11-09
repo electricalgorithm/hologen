@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import numpy as np
 from numpy.random import Generator
@@ -73,7 +73,9 @@ class CircleGenerator(BaseShapeGenerator):
 
     def generate(self, grid: GridSpec, rng: Generator) -> ArrayFloat:
         canvas = self._empty_canvas(grid)
-        radius = rng.uniform(self.min_radius, self.max_radius) * min(grid.height, grid.width)
+        radius = rng.uniform(self.min_radius, self.max_radius) * min(
+            grid.height, grid.width
+        )
         center_y = rng.uniform(0.3, 0.7) * grid.height
         center_x = rng.uniform(0.3, 0.7) * grid.width
         yy, xx = np.ogrid[: grid.height, : grid.width]
@@ -127,7 +129,9 @@ class RingGenerator(BaseShapeGenerator):
 
     def generate(self, grid: GridSpec, rng: Generator) -> ArrayFloat:
         canvas = self._empty_canvas(grid)
-        outer_radius = rng.uniform(self.min_radius, self.max_radius) * min(grid.height, grid.width)
+        outer_radius = rng.uniform(self.min_radius, self.max_radius) * min(
+            grid.height, grid.width
+        )
         thickness = rng.uniform(self.min_thickness, self.max_thickness) * outer_radius
         inner_radius = max(outer_radius - thickness, 2.0)
         center_y = rng.uniform(0.4, 0.6) * grid.height

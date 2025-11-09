@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, cast
+from typing import cast
 
 from numpy.random import Generator
 
@@ -63,7 +64,9 @@ class ObjectToHologramConverter:
 
     strategy_mapping: dict[HolographyMethod, HolographyStrategy]
 
-    def create_hologram(self, sample: ObjectSample, config: HolographyConfig) -> ArrayFloat:
+    def create_hologram(
+        self, sample: ObjectSample, config: HolographyConfig
+    ) -> ArrayFloat:
         """Generate a hologram for the provided object sample.
 
         Args:
@@ -121,7 +124,9 @@ class HologramDatasetGenerator(DatasetGenerator):
     object_producer: ObjectDomainProducer
     converter: ObjectToHologramConverter
 
-    def generate(self, count: int, config: HolographyConfig, rng: Generator) -> Iterable[HologramSample]:
+    def generate(
+        self, count: int, config: HolographyConfig, rng: Generator
+    ) -> Iterable[HologramSample]:
         """Yield hologram samples as an iterable sequence.
 
         Args:

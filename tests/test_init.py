@@ -28,29 +28,29 @@ class TestPackageImports:
 
     def test_types_available(self) -> None:
         """Test that type definitions are available."""
-        assert hasattr(hologen, 'GridSpec')
-        assert hasattr(hologen, 'OpticalConfig')
-        assert hasattr(hologen, 'OffAxisCarrier')
-        assert hasattr(hologen, 'HolographyConfig')
-        assert hasattr(hologen, 'HolographyMethod')
-        assert hasattr(hologen, 'ObjectSample')
-        assert hasattr(hologen, 'HologramSample')
+        assert hasattr(hologen, "GridSpec")
+        assert hasattr(hologen, "OpticalConfig")
+        assert hasattr(hologen, "OffAxisCarrier")
+        assert hasattr(hologen, "HolographyConfig")
+        assert hasattr(hologen, "HolographyMethod")
+        assert hasattr(hologen, "ObjectSample")
+        assert hasattr(hologen, "HologramSample")
 
     def test_converters_available(self) -> None:
         """Test that converter classes are available."""
-        assert hasattr(hologen, 'ObjectDomainProducer')
-        assert hasattr(hologen, 'ObjectToHologramConverter')
-        assert hasattr(hologen, 'HologramDatasetGenerator')
+        assert hasattr(hologen, "ObjectDomainProducer")
+        assert hasattr(hologen, "ObjectToHologramConverter")
+        assert hasattr(hologen, "HologramDatasetGenerator")
 
     def test_shapes_available(self) -> None:
         """Test that shape generators are available."""
-        assert hasattr(hologen, 'CircleGenerator')
-        assert hasattr(hologen, 'RectangleGenerator')
-        assert hasattr(hologen, 'RingGenerator')
+        assert hasattr(hologen, "CircleGenerator")
+        assert hasattr(hologen, "RectangleGenerator")
+        assert hasattr(hologen, "RingGenerator")
 
     def test_io_available(self) -> None:
         """Test that IO utilities are available."""
-        assert hasattr(hologen, 'NumpyDatasetWriter')
+        assert hasattr(hologen, "NumpyDatasetWriter")
 
     def test_imported_classes_are_correct(self) -> None:
         """Test that imported classes are the correct types."""
@@ -87,10 +87,10 @@ class TestPackageImports:
 
     def test_all_attribute(self) -> None:
         """Test that __all__ is properly defined."""
-        assert hasattr(hologen, '__all__')
-        assert isinstance(hologen.__all__, (list, tuple))
+        assert hasattr(hologen, "__all__")
+        assert isinstance(hologen.__all__, list | tuple)
         assert len(hologen.__all__) > 0
-        
+
         # Check that all items in __all__ are actually available
         for item in hologen.__all__:
             assert hasattr(hologen, item), f"Item '{item}' in __all__ but not available"

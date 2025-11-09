@@ -40,7 +40,9 @@ def off_axis_carrier() -> OffAxisCarrier:
 
 
 @pytest.fixture
-def inline_config(grid_spec: GridSpec, optical_config: OpticalConfig) -> HolographyConfig:
+def inline_config(
+    grid_spec: GridSpec, optical_config: OpticalConfig
+) -> HolographyConfig:
     """Provide inline holography configuration."""
     return HolographyConfig(
         grid=grid_spec,
@@ -69,7 +71,7 @@ def sample_object_field(grid_spec: GridSpec) -> np.ndarray:
     field = np.zeros((grid_spec.height, grid_spec.width), dtype=np.float64)
     center_y, center_x = grid_spec.height // 2, grid_spec.width // 2
     radius = min(grid_spec.height, grid_spec.width) // 8
-    y, x = np.ogrid[:grid_spec.height, :grid_spec.width]
+    y, x = np.ogrid[: grid_spec.height, : grid_spec.width]
     mask = (y - center_y) ** 2 + (x - center_x) ** 2 <= radius**2
     field[mask] = 1.0
     return field

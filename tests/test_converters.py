@@ -41,7 +41,7 @@ class TestObjectDomainProducer:
         """Test that generate returns ObjectSample with correct shape."""
         generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
         producer = ObjectDomainProducer(shape_generators=(generator,))
-        
+
         sample = producer.generate(grid_spec, rng)
         assert isinstance(sample, ObjectSample)
         assert sample.name == "circle"
@@ -52,7 +52,7 @@ class TestObjectDomainProducer:
         """Test that generated samples are normalized."""
         generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
         producer = ObjectDomainProducer(shape_generators=(generator,))
-        
+
         sample = producer.generate(grid_spec, rng)
         assert np.all(sample.pixels >= 0.0)
         assert np.all(sample.pixels <= 1.0)
@@ -60,17 +60,17 @@ class TestObjectDomainProducer:
     def test_generate_multiple_generators(self, grid_spec, rng: Generator) -> None:
         """Test generation with multiple shape generators."""
         from hologen.shapes import RectangleGenerator
-        
+
         circle_gen = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
         rect_gen = RectangleGenerator(name="rectangle", min_scale=0.1, max_scale=0.3)
         producer = ObjectDomainProducer(shape_generators=(circle_gen, rect_gen))
-        
+
         # Generate multiple samples to test selection
         names = set()
         for _ in range(20):
             sample = producer.generate(grid_spec, rng)
             names.add(sample.name)
-        
+
         # Should use both generators over multiple samples
         assert len(names) >= 1  # At least one generator used
 
@@ -95,10 +95,10 @@ class TestObjectToHologramConverter:
         """Test hologram creation."""
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         sample = ObjectSample(name="test", pixels=sample_object_field)
         hologram = converter.create_hologram(sample, inline_config)
-        
+
         assert hologram.shape == sample_object_field.shape
         assert hologram.dtype == np.float64
         assert np.all(hologram >= 0.0)
@@ -107,11 +107,11 @@ class TestObjectToHologramConverter:
         """Test reconstruction."""
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         sample = ObjectSample(name="test", pixels=sample_object_field)
         hologram = converter.create_hologram(sample, inline_config)
         reconstruction = converter.reconstruct(hologram, inline_config)
-        
+
         assert reconstruction.shape == hologram.shape
         assert reconstruction.dtype == np.float64
         assert np.all(reconstruction >= 0.0)
@@ -120,7 +120,7 @@ class TestObjectToHologramConverter:
         """Test error for unknown holography method."""
         strategy_mapping = {}  # Empty mapping
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         sample = ObjectSample(name="test", pixels=sample_object_field)
         with pytest.raises(KeyError, match="Unknown holography method"):
             converter.create_hologram(sample, inline_config)
@@ -130,7 +130,7 @@ class TestObjectToHologramConverter:
         inline_strategy = InlineHolographyStrategy()
         strategy_mapping = {HolographyMethod.INLINE: inline_strategy}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         resolved = converter._resolve_strategy(HolographyMethod.INLINE)
         assert resolved is inline_strategy
 
@@ -150,7 +150,7 @@ class TestHologramDatasetGenerator:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
@@ -164,12 +164,12 @@ class TestHologramDatasetGenerator:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(dataset_gen.generate(count=3, config=inline_config, rng=rng))
         assert len(samples) == 3
 
@@ -179,19 +179,25 @@ class TestHologramDatasetGenerator:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(dataset_gen.generate(count=1, config=inline_config, rng=rng))
         sample = samples[0]
-        
+
         assert isinstance(sample, HologramSample)
         assert isinstance(sample.object_sample, ObjectSample)
-        assert sample.hologram.shape == (inline_config.grid.height, inline_config.grid.width)
-        assert sample.reconstruction.shape == (inline_config.grid.height, inline_config.grid.width)
+        assert sample.hologram.shape == (
+            inline_config.grid.height,
+            inline_config.grid.width,
+        )
+        assert sample.reconstruction.shape == (
+            inline_config.grid.height,
+            inline_config.grid.width,
+        )
 
     def test_slots(self) -> None:
         """Test that HologramDatasetGenerator uses slots."""
@@ -199,7 +205,7 @@ class TestHologramDatasetGenerator:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
@@ -245,7 +251,7 @@ class TestDefaultConverter:
         converter = default_converter()
         inline_strategy = converter.strategy_mapping[HolographyMethod.INLINE]
         off_axis_strategy = converter.strategy_mapping[HolographyMethod.OFF_AXIS]
-        
+
         assert isinstance(inline_strategy, InlineHolographyStrategy)
         assert isinstance(off_axis_strategy, OffAxisHolographyStrategy)
 
@@ -253,10 +259,12 @@ class TestDefaultConverter:
 class TestGenerateDataset:
     """Test generate_dataset function."""
 
-    def test_basic_generation(self, inline_config, rng: Generator, tmp_path: Path) -> None:
+    def test_basic_generation(
+        self, inline_config, rng: Generator, tmp_path: Path
+    ) -> None:
         """Test basic dataset generation."""
         mock_writer = Mock()
-        
+
         generate_dataset(
             count=2,
             config=inline_config,
@@ -264,20 +272,20 @@ class TestGenerateDataset:
             writer=mock_writer,
             output_dir=tmp_path,
         )
-        
+
         # Verify writer was called
         mock_writer.save.assert_called_once()
         args, kwargs = mock_writer.save.call_args
-        samples = args[0] if args else kwargs['samples']
-        output_dir = args[1] if len(args) > 1 else kwargs['output_dir']
-        
+        samples = args[0] if args else kwargs["samples"]
+        output_dir = args[1] if len(args) > 1 else kwargs["output_dir"]
+
         assert len(samples) == 2
         assert output_dir == tmp_path
 
     def test_default_generator(self, inline_config, rng: Generator) -> None:
         """Test generation with default generator."""
         mock_writer = Mock()
-        
+
         generate_dataset(
             count=1,
             config=inline_config,
@@ -285,7 +293,7 @@ class TestGenerateDataset:
             writer=mock_writer,
             generator=None,  # Use default
         )
-        
+
         mock_writer.save.assert_called_once()
 
     def test_custom_generator(self, inline_config, rng: Generator) -> None:
@@ -299,7 +307,7 @@ class TestGenerateDataset:
                 reconstruction=np.zeros((32, 32)),
             )
         ]
-        
+
         generate_dataset(
             count=1,
             config=inline_config,
@@ -307,14 +315,16 @@ class TestGenerateDataset:
             writer=mock_writer,
             generator=mock_generator,
         )
-        
-        mock_generator.generate.assert_called_once_with(count=1, config=inline_config, rng=rng)
+
+        mock_generator.generate.assert_called_once_with(
+            count=1, config=inline_config, rng=rng
+        )
         mock_writer.save.assert_called_once()
 
     def test_default_output_dir(self, inline_config, rng: Generator) -> None:
         """Test generation with default output directory."""
         mock_writer = Mock()
-        
+
         generate_dataset(
             count=1,
             config=inline_config,
@@ -322,8 +332,8 @@ class TestGenerateDataset:
             writer=mock_writer,
             output_dir=None,  # Use default
         )
-        
+
         mock_writer.save.assert_called_once()
         args, kwargs = mock_writer.save.call_args
-        output_dir = args[1] if len(args) > 1 else kwargs['output_dir']
+        output_dir = args[1] if len(args) > 1 else kwargs["output_dir"]
         assert output_dir == Path("dataset")
