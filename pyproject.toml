@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hologen"
-version = "0.1.0"
+version = "0.2.0"
 description = "Holography dataset generation toolkit"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [
     { name = "Gyokhan Kochmarla", email = "hello@gyokhan.com" },
 ]
@@ -26,7 +26,7 @@ dev = [
 ]
 
 [tool.black]
-target-version = ["py313"]
+target-version = ["py313", "py312", "py311"]
 line-length = 88
 
 [tool.ruff]
