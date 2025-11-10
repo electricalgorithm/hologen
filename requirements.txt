@@ -1,4 +1,5 @@
 coverage==7.11.2
+-e git+ssh://git@github.com/electricalgorithm/hologen.git@8a42dc368711ff8806f75225183f8cbe514306f2#egg=hologen
 iniconfig==2.3.0
 numpy==2.3.4
 packaging==25.0
@@ -7,3 +8,4 @@ pluggy==1.6.0
 Pygments==2.19.2
 pytest==9.0.0
 pytest-cov==7.0.0
+scipy==1.16.3

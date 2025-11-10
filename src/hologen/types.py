@@ -148,3 +148,52 @@ class DatasetGenerator(Protocol):
         self, count: int, config: HolographyConfig, rng: Generator
     ) -> Iterable[HologramSample]:
         """Produce holography samples."""
+
+
+@dataclass(slots=True)
+class NoiseConfig:
+    """Configuration for hologram recording noise simulation.
+
+    Args:
+        sensor_read_noise: Standard deviation of Gaussian read noise in intensity units.
+        sensor_shot_noise: Enable Poisson shot noise simulation.
+        sensor_dark_current: Mean dark current in intensity units.
+        sensor_bit_depth: ADC bit depth for quantization (None for no quantization).
+        speckle_contrast: Speckle contrast ratio (0.0 to 1.0, 0.0 disables speckle).
+        speckle_correlation_length: Speckle correlation length in pixels.
+        aberration_defocus: Defocus aberration coefficient (Zernike Z_2^0).
+        aberration_astigmatism_x: Astigmatism x coefficient (Zernike Z_2^-2).
+        aberration_astigmatism_y: Astigmatism y coefficient (Zernike Z_2^2).
+        aberration_coma_x: Coma x coefficient (Zernike Z_3^-1).
+        aberration_coma_y: Coma y coefficient (Zernike Z_3^1).
+    """
+
+    sensor_read_noise: float = 0.0
+    sensor_shot_noise: bool = False
+    sensor_dark_current: float = 0.0
+    sensor_bit_depth: int | None = None
+    speckle_contrast: float = 0.0
+    speckle_correlation_length: float = 1.0
+    aberration_defocus: float = 0.0
+    aberration_astigmatism_x: float = 0.0
+    aberration_astigmatism_y: float = 0.0
+    aberration_coma_x: float = 0.0
+    aberration_coma_y: float = 0.0
+
+
+class NoiseModel(Protocol):
+    """Protocol for hologram noise simulation models."""
+
+    def apply(
+        self, hologram: ArrayFloat, config: HolographyConfig, rng: Generator
+    ) -> ArrayFloat:
+        """Apply noise to a hologram.
+
+        Args:
+            hologram: Perfect hologram intensity distribution.
+            config: Holography configuration containing grid and optical parameters.
+            rng: Random number generator for stochastic noise.
+
+        Returns:
+            Noisy hologram intensity distribution.
+        """

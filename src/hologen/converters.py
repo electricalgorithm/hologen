@@ -21,8 +21,15 @@ from hologen.types import (
     HolographyConfig,
     HolographyMethod,
     HolographyStrategy,
+    NoiseModel,
     ObjectSample,
     ObjectShapeGenerator,
+)
+from hologen.noise import (
+    AberrationNoiseModel,
+    CompositeNoiseModel,
+    SensorNoiseModel,
+    SpeckleNoiseModel,
 )
 from hologen.utils.math import normalize_image
 
@@ -60,12 +67,14 @@ class ObjectToHologramConverter:
 
     Args:
         strategy_mapping: Mapping from holography methods to strategy implementations.
+        noise_model: Optional noise model to apply to generated holograms.
     """
 
     strategy_mapping: dict[HolographyMethod, HolographyStrategy]
+    noise_model: NoiseModel | None = None
 
     def create_hologram(
-        self, sample: ObjectSample, config: HolographyConfig
+        self, sample: ObjectSample, config: HolographyConfig, rng: Generator
     ) -> ArrayFloat:
         """Generate a hologram for the provided object sample.
 
@@ -78,7 +87,12 @@ class ObjectToHologramConverter:
         """
 
         strategy = self._resolve_strategy(config.method)
-        return strategy.create_hologram(sample.pixels, config)
+        hologram = strategy.create_hologram(sample.pixels, config)
+        
+        # Apply the noise model if given.
+        if self.noise_model is not None and rng is not None:
+            hologram = self.noise_model.apply(hologram, config, rng)
+        return hologram
 
     def reconstruct(self, hologram: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
         """Reconstruct an object-domain field from a hologram.
@@ -140,7 +154,7 @@ class HologramDatasetGenerator(DatasetGenerator):
 
         for _ in range(count):
             object_sample = self.object_producer.generate(config.grid, rng)
-            hologram = self.converter.create_hologram(object_sample, config)
+            hologram = self.converter.create_hologram(object_sample, config, rng)
             reconstruction = self.converter.reconstruct(hologram, config)
             yield HologramSample(
                 object_sample=object_sample,
@@ -156,14 +170,14 @@ def default_object_producer() -> ObjectDomainProducer:
     return ObjectDomainProducer(shape_generators=generators)
 
 
-def default_converter() -> ObjectToHologramConverter:
+def default_converter(noise_model: NoiseModel | None = None) -> ObjectToHologramConverter:
     """Create the default converter with inline and off-axis strategies."""
 
     strategies: dict[HolographyMethod, HolographyStrategy] = {
         HolographyMethod.INLINE: InlineHolographyStrategy(),
         HolographyMethod.OFF_AXIS: OffAxisHolographyStrategy(),
     }
-    return ObjectToHologramConverter(strategy_mapping=strategies)
+    return ObjectToHologramConverter(strategy_mapping=strategies, noise_model=noise_model)
 
 
 def generate_dataset(
@@ -194,3 +208,68 @@ def generate_dataset(
     samples = list(generator.generate(count=count, config=config, rng=rng))
     target_dir = output_dir if output_dir is not None else Path("dataset")
     writer.save(samples=samples, output_dir=target_dir)
+
+
+def create_noise_model(config: NoiseConfig) -> NoiseModel | None:
+    """Create a composite noise model from configuration.
+
+    Args:
+        config: Noise configuration specifying all noise parameters.
+
+    Returns:
+        Composite noise model or None if all noise is disabled.
+    """
+    models: list[NoiseModel] = []
+
+    has_aberration = (
+        config.aberration_defocus != 0.0
+        or config.aberration_astigmatism_x != 0.0
+        or config.aberration_astigmatism_y != 0.0
+        or config.aberration_coma_x != 0.0
+        or config.aberration_coma_y != 0.0
+    )
+    if has_aberration:
+        models.append(
+            AberrationNoiseModel(
+                name="aberration",
+                defocus=config.aberration_defocus,
+                astigmatism_x=config.aberration_astigmatism_x,
+                astigmatism_y=config.aberration_astigmatism_y,
+                coma_x=config.aberration_coma_x,
+                coma_y=config.aberration_coma_y,
+            )
+        )
+
+    if config.speckle_contrast > 0.0:
+        models.append(
+            SpeckleNoiseModel(
+                name="speckle",
+                contrast=config.speckle_contrast,
+                correlation_length=config.speckle_correlation_length,
+            )
+        )
+
+    has_sensor = (
+        config.sensor_read_noise > 0.0
+        or config.sensor_shot_noise
+        or config.sensor_dark_current > 0.0
+        or config.sensor_bit_depth is not None
+    )
+    if has_sensor:
+        models.append(
+            SensorNoiseModel(
+                name="sensor",
+                read_noise=config.sensor_read_noise,
+                shot_noise=config.sensor_shot_noise,
+                dark_current=config.sensor_dark_current,
+                bit_depth=config.sensor_bit_depth,
+            )
+        )
+
+    if not models:
+        return None
+
+    if len(models) == 1:
+        return models[0]
+
+    return CompositeNoiseModel(name="composite", models=tuple(models))
