@@ -1,11 +1,21 @@
+build==1.3.0
+contourpy==1.3.3
 coverage==7.11.2
--e git+ssh://git@github.com/electricalgorithm/hologen.git@8a42dc368711ff8806f75225183f8cbe514306f2#egg=hologen
+cycler==0.12.1
+fonttools==4.60.1
+-e git+ssh://git@github.com/electricalgorithm/hologen.git@e86f1d89c54d8792a659617d28dffa6342432308#egg=hologen
 iniconfig==2.3.0
+kiwisolver==1.4.9
+matplotlib==3.10.7
 numpy==2.3.4
 packaging==25.0
 pillow==12.0.0
 pluggy==1.6.0
 Pygments==2.19.2
+pyparsing==3.2.5
+pyproject_hooks==1.2.0
 pytest==9.0.0
 pytest-cov==7.0.0
+python-dateutil==2.9.0.post0
 scipy==1.16.3
+six==1.17.0
