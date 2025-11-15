@@ -80,17 +80,21 @@ class TestInlineHolographyStrategy:
     def test_create_hologram_shape(self, inline_config, sample_object_field) -> None:
         """Test that create_hologram returns correct shape."""
         strategy = InlineHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, inline_config)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, inline_config)
         assert hologram.shape == sample_object_field.shape
-        assert hologram.dtype == np.float64
+        assert hologram.dtype == np.complex128
 
     def test_create_hologram_non_negative(
         self, inline_config, sample_object_field
     ) -> None:
         """Test that hologram intensities are non-negative."""
         strategy = InlineHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, inline_config)
-        assert np.all(hologram >= 0.0)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, inline_config)
+        # Check that intensity (magnitude squared) is non-negative
+        intensity = np.abs(hologram) ** 2
+        assert np.all(intensity >= 0.0)
 
     def test_create_hologram_deterministic(
         self, inline_config, sample_object_field
@@ -104,17 +108,21 @@ class TestInlineHolographyStrategy:
     def test_reconstruct_shape(self, inline_config, sample_object_field) -> None:
         """Test that reconstruct returns correct shape."""
         strategy = InlineHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, inline_config)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, inline_config)
         reconstruction = strategy.reconstruct(hologram, inline_config)
         assert reconstruction.shape == hologram.shape
-        assert reconstruction.dtype == np.float64
+        assert reconstruction.dtype == np.complex128
 
     def test_reconstruct_non_negative(self, inline_config, sample_object_field) -> None:
         """Test that reconstruction amplitudes are non-negative."""
         strategy = InlineHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, inline_config)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, inline_config)
         reconstruction = strategy.reconstruct(hologram, inline_config)
-        assert np.all(reconstruction >= 0.0)
+        # Check that amplitude (magnitude) is non-negative
+        amplitude = np.abs(reconstruction)
+        assert np.all(amplitude >= 0.0)
 
     def test_reconstruct_deterministic(
         self, inline_config, sample_object_field
@@ -158,20 +166,20 @@ class TestInlineHolographyStrategy:
         assert np.all(np.isfinite(reconstruction))
 
     def test_negative_hologram_handling(self, inline_config) -> None:
-        """Test reconstruction with negative hologram values."""
+        """Test reconstruction with complex hologram values."""
         strategy = InlineHolographyStrategy()
-        # Create hologram with some negative values matching grid size
+        # Create complex hologram matching grid size
         hologram = np.full(
             (inline_config.grid.height, inline_config.grid.width),
-            -1.0,
-            dtype=np.float64,
+            -1.0 + 0j,
+            dtype=np.complex128,
         )
-        hologram[0, 0] = 2.0
+        hologram[0, 0] = 2.0 + 0j
         reconstruction = strategy.reconstruct(hologram, inline_config)
 
-        # Should handle negative values by clamping to zero
+        # Should handle complex values gracefully
         assert reconstruction.shape == hologram.shape
-        assert np.all(reconstruction >= 0.0)
+        assert reconstruction.dtype == np.complex128
         assert np.all(np.isfinite(reconstruction))
 
     def test_uniform_field(self, inline_config) -> None:

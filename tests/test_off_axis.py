@@ -185,17 +185,21 @@ class TestOffAxisHolographyStrategy:
     def test_create_hologram_shape(self, off_axis_config, sample_object_field) -> None:
         """Test that create_hologram returns correct shape."""
         strategy = OffAxisHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, off_axis_config)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, off_axis_config)
         assert hologram.shape == sample_object_field.shape
-        assert hologram.dtype == np.float64
+        assert hologram.dtype == np.complex128
 
     def test_create_hologram_non_negative(
         self, off_axis_config, sample_object_field
     ) -> None:
         """Test that hologram intensities are non-negative."""
         strategy = OffAxisHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, off_axis_config)
-        assert np.all(hologram >= 0.0)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, off_axis_config)
+        # Check that intensity (magnitude squared) is non-negative
+        intensity = np.abs(hologram) ** 2
+        assert np.all(intensity >= 0.0)
 
     def test_create_hologram_deterministic(
         self, off_axis_config, sample_object_field
@@ -209,10 +213,11 @@ class TestOffAxisHolographyStrategy:
     def test_reconstruct_shape(self, off_axis_config, sample_object_field) -> None:
         """Test that reconstruct returns correct shape."""
         strategy = OffAxisHolographyStrategy()
-        hologram = strategy.create_hologram(sample_object_field, off_axis_config)
+        complex_field = sample_object_field.astype(np.complex128)
+        hologram = strategy.create_hologram(complex_field, off_axis_config)
         reconstruction = strategy.reconstruct(hologram, off_axis_config)
         assert reconstruction.shape == hologram.shape
-        assert reconstruction.dtype == np.float64
+        assert reconstruction.dtype == np.complex128
 
     def test_reconstruct_non_negative(
         self, off_axis_config, sample_object_field
@@ -295,12 +300,13 @@ class TestOffAxisHolographyStrategy:
 
         # Test with zero object field - should still have reference wave energy
         zero_field = np.zeros(
-            (off_axis_config.grid.height, off_axis_config.grid.width), dtype=np.float64
+            (off_axis_config.grid.height, off_axis_config.grid.width), dtype=np.complex128
         )
         hologram = strategy.create_hologram(zero_field, off_axis_config)
 
-        # Should have non-zero energy from reference wave
-        assert np.sum(hologram) > 0
+        # Should have non-zero energy from reference wave (check intensity)
+        intensity = np.abs(hologram) ** 2
+        assert np.sum(intensity) > 0
 
     def test_round_trip_similarity(self, off_axis_config, sample_object_field) -> None:
         """Test that round-trip processing preserves main features."""

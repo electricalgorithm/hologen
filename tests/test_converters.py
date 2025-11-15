@@ -21,9 +21,13 @@ from hologen.holography.inline import InlineHolographyStrategy
 from hologen.holography.off_axis import OffAxisHolographyStrategy
 from hologen.shapes import CircleGenerator
 from hologen.types import (
+    ComplexHologramSample,
+    ComplexObjectSample,
+    FieldRepresentation,
     HologramSample,
     HolographyMethod,
     ObjectSample,
+    OutputConfig,
 )
 
 
@@ -344,3 +348,139 @@ class TestGenerateDataset:
         args, kwargs = mock_writer.save.call_args
         output_dir = args[1] if len(args) > 1 else kwargs["output_dir"]
         assert output_dir == Path("dataset")
+
+
+class TestBackwardCompatibility:
+    """Test backward compatibility with legacy intensity-only workflow."""
+
+    def test_legacy_object_sample_conversion(self, inline_config) -> None:
+        """Test that legacy ObjectSample is converted to complex internally."""
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        # Create legacy ObjectSample with correct dimensions
+        height, width = inline_config.grid.height, inline_config.grid.width
+        pixels = np.ones((height, width), dtype=np.float64)
+        legacy_sample = ObjectSample(name="test", pixels=pixels)
+
+        # Should accept legacy sample and return intensity (float array)
+        hologram = converter.create_hologram(legacy_sample, inline_config)
+        assert isinstance(hologram, np.ndarray)
+        assert hologram.dtype == np.float64
+        assert not np.iscomplexobj(hologram)
+
+    def test_complex_object_sample_returns_complex(self, inline_config) -> None:
+        """Test that ComplexObjectSample returns complex hologram."""
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        # Create ComplexObjectSample with correct dimensions
+        height, width = inline_config.grid.height, inline_config.grid.width
+        field = np.ones((height, width), dtype=np.complex128)
+        complex_sample = ComplexObjectSample(
+            name="test", field=field, representation=FieldRepresentation.AMPLITUDE
+        )
+
+        # Should return complex hologram
+        hologram = converter.create_hologram(complex_sample, inline_config)
+        assert isinstance(hologram, np.ndarray)
+        assert np.iscomplexobj(hologram)
+
+    def test_legacy_reconstruct_intensity(self, inline_config) -> None:
+        """Test that legacy intensity hologram reconstruction works."""
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        # Create legacy intensity hologram (real-valued) with correct dimensions
+        height, width = inline_config.grid.height, inline_config.grid.width
+        intensity_hologram = np.ones((height, width), dtype=np.float64)
+
+        # Should accept intensity and return amplitude (float array)
+        reconstruction = converter.reconstruct(intensity_hologram, inline_config)
+        assert isinstance(reconstruction, np.ndarray)
+        assert reconstruction.dtype == np.float64
+        assert not np.iscomplexobj(reconstruction)
+
+    def test_complex_reconstruct_returns_complex(self, inline_config) -> None:
+        """Test that complex hologram reconstruction returns complex."""
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        # Create complex hologram with correct dimensions
+        height, width = inline_config.grid.height, inline_config.grid.width
+        complex_hologram = np.ones((height, width), dtype=np.complex128)
+
+        # Should return complex reconstruction
+        reconstruction = converter.reconstruct(complex_hologram, inline_config)
+        assert isinstance(reconstruction, np.ndarray)
+        assert np.iscomplexobj(reconstruction)
+
+    def test_default_output_config_is_intensity(self) -> None:
+        """Test that default OutputConfig uses intensity representation."""
+        config = OutputConfig()
+        assert config.object_representation == FieldRepresentation.INTENSITY
+        assert config.hologram_representation == FieldRepresentation.INTENSITY
+        assert config.reconstruction_representation == FieldRepresentation.INTENSITY
+
+    def test_default_converter_output_config(self) -> None:
+        """Test that default converter has intensity-only output config."""
+        converter = default_converter()
+        assert converter.output_config.object_representation == FieldRepresentation.INTENSITY
+        assert converter.output_config.hologram_representation == FieldRepresentation.INTENSITY
+        assert converter.output_config.reconstruction_representation == FieldRepresentation.INTENSITY
+
+    def test_legacy_generate_produces_hologram_sample(
+        self, inline_config, rng: Generator
+    ) -> None:
+        """Test that legacy generation (use_complex=False) produces HologramSample."""
+        generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
+        producer = ObjectDomainProducer(shape_generators=(generator,))
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        dataset_gen = HologramDatasetGenerator(
+            object_producer=producer,
+            converter=converter,
+        )
+
+        # Generate with use_complex=False (legacy mode)
+        samples = list(
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=False
+            )
+        )
+        sample = samples[0]
+
+        # Should produce legacy HologramSample
+        assert isinstance(sample, HologramSample)
+        assert isinstance(sample.object_sample, ObjectSample)
+        assert not np.iscomplexobj(sample.hologram)
+        assert not np.iscomplexobj(sample.reconstruction)
+
+    def test_complex_generate_produces_complex_hologram_sample(
+        self, inline_config, rng: Generator
+    ) -> None:
+        """Test that complex generation (use_complex=True) produces ComplexHologramSample."""
+        generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
+        producer = ObjectDomainProducer(shape_generators=(generator,))
+        strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
+        converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
+
+        dataset_gen = HologramDatasetGenerator(
+            object_producer=producer,
+            converter=converter,
+        )
+
+        # Generate with use_complex=True
+        samples = list(
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=True
+            )
+        )
+        sample = samples[0]
+
+        # Should produce ComplexHologramSample
+        assert isinstance(sample, ComplexHologramSample)
+        assert isinstance(sample.object_sample, ComplexObjectSample)
+        assert np.iscomplexobj(sample.hologram_field)
+        assert np.iscomplexobj(sample.reconstruction_field)

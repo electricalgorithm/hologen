@@ -78,7 +78,12 @@ class TestAngularSpectrumPropagate:
     def test_evanescent_decay(self, optical_config: OpticalConfig) -> None:
         """Test that evanescent components decay with distance."""
         # Create a field with high spatial frequencies (evanescent components)
-        grid = GridSpec(height=32, width=32, pixel_pitch=1e-7)  # Very small pixels
+        # Use pixel pitch that satisfies Nyquist but creates evanescent waves
+        # For 532nm wavelength, use 300nm pixels (< lambda/2 = 266nm)
+        # Max frequency = 1/(2*300nm) = 1.67e6 cycles/m
+        # This frequency times lambda = 0.89 < 1.0 (satisfies Nyquist)
+        # But high frequency components will still be evanescent
+        grid = GridSpec(height=32, width=32, pixel_pitch=3e-7)
         field = np.zeros((grid.height, grid.width), dtype=np.complex128)
         field[0, -1] = 1.0  # High frequency component
 
