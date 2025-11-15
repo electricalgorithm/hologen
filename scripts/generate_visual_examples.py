@@ -83,14 +83,17 @@ def save_field_comparison(
 def save_object_type_comparison(output_dir: Path) -> None:
     """Generate comparison of amplitude-only vs phase-only objects."""
     grid = GridSpec(height=512, width=512, pixel_pitch=6.4e-6)
-    generator = CircleGenerator(radius_range=(80e-6, 80e-6))
+    generator = CircleGenerator(name="circle", min_radius=0.15, max_radius=0.15)
+    producer = ObjectDomainProducer(shape_generators=(generator,))
     rng = np.random.default_rng(42)
     
     # Generate amplitude-only object
-    amp_field = generator.generate_complex(grid, rng, mode="amplitude")
+    amp_sample = producer.generate_complex(grid, rng, mode="amplitude")
+    amp_field = amp_sample.field
     
     # Generate phase-only object
-    phase_field = generator.generate_complex(grid, rng, phase_shift=np.pi/2, mode="phase")
+    phase_sample = producer.generate_complex(grid, rng, phase_shift=np.pi/2, mode="phase")
+    phase_field = phase_sample.field
     
     # Save comparisons
     save_field_comparison(
@@ -114,8 +117,8 @@ def save_hologram_reconstruction_example(output_dir: Path) -> None:
     config = HolographyConfig(grid=grid, optics=optics, method=HolographyMethod.INLINE)
     
     # Create components
-    generator = CircleGenerator(radius_range=(80e-6, 80e-6))
-    producer = ObjectDomainProducer(generator=generator, phase_shift=np.pi/2, mode="phase")
+    generator = CircleGenerator(name="circle", min_radius=0.15, max_radius=0.15)
+    producer = ObjectDomainProducer(shape_generators=(generator,))
     strategy = InlineHolographyStrategy()
     converter = ObjectToHologramConverter(
         strategy_mapping={HolographyMethod.INLINE: strategy}
@@ -123,7 +126,7 @@ def save_hologram_reconstruction_example(output_dir: Path) -> None:
     
     # Generate sample
     rng = np.random.default_rng(42)
-    object_sample = producer.generate_complex(rng)
+    object_sample = producer.generate_complex(config.grid, rng, phase_shift=np.pi/2, mode="phase")
     
     # Create hologram and reconstruction
     hologram = converter.create_hologram(object_sample, config, rng)
@@ -155,15 +158,15 @@ def save_side_by_side_comparison(output_dir: Path) -> None:
     optics = OpticalConfig(wavelength=532e-9, propagation_distance=0.05)
     config = HolographyConfig(grid=grid, optics=optics, method=HolographyMethod.INLINE)
     
-    generator = CircleGenerator(radius_range=(80e-6, 80e-6))
-    producer = ObjectDomainProducer(generator=generator, phase_shift=np.pi/2, mode="phase")
+    generator = CircleGenerator(name="circle", min_radius=0.15, max_radius=0.15)
+    producer = ObjectDomainProducer(shape_generators=(generator,))
     strategy = InlineHolographyStrategy()
     converter = ObjectToHologramConverter(
         strategy_mapping={HolographyMethod.INLINE: strategy}
     )
     
     rng = np.random.default_rng(42)
-    object_sample = producer.generate_complex(rng)
+    object_sample = producer.generate_complex(config.grid, rng, phase_shift=np.pi/2, mode="phase")
     hologram = converter.create_hologram(object_sample, config, rng)
     
     # Create comparison figure
