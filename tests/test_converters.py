@@ -425,9 +425,18 @@ class TestBackwardCompatibility:
     def test_default_converter_output_config(self) -> None:
         """Test that default converter has intensity-only output config."""
         converter = default_converter()
-        assert converter.output_config.object_representation == FieldRepresentation.INTENSITY
-        assert converter.output_config.hologram_representation == FieldRepresentation.INTENSITY
-        assert converter.output_config.reconstruction_representation == FieldRepresentation.INTENSITY
+        assert (
+            converter.output_config.object_representation
+            == FieldRepresentation.INTENSITY
+        )
+        assert (
+            converter.output_config.hologram_representation
+            == FieldRepresentation.INTENSITY
+        )
+        assert (
+            converter.output_config.reconstruction_representation
+            == FieldRepresentation.INTENSITY
+        )
 
     def test_legacy_generate_produces_hologram_sample(
         self, inline_config, rng: Generator

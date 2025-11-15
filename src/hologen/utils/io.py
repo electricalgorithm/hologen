@@ -17,7 +17,6 @@ from hologen.types import (
     HologramSample,
     ObjectSample,
 )
-from hologen.utils.fields import complex_to_representation
 from hologen.utils.math import normalize_image
 
 
@@ -96,9 +95,7 @@ class ComplexFieldWriter:
     save_preview: bool = True
     phase_colormap: str = "twilight"
 
-    def save(
-        self, samples: Iterable[ComplexHologramSample], output_dir: Path
-    ) -> None:
+    def save(self, samples: Iterable[ComplexHologramSample], output_dir: Path) -> None:
         """Write complex hologram samples to disk.
 
         Args:

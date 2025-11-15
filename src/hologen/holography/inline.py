@@ -36,7 +36,9 @@ class InlineHolographyStrategy(HolographyStrategy):
         )
         return propagated
 
-    def reconstruct(self, hologram: ArrayComplex, config: HolographyConfig) -> ArrayComplex:
+    def reconstruct(
+        self, hologram: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
         """Reconstruct the object domain from an inline hologram."""
 
         reconstructed = angular_spectrum_propagate(

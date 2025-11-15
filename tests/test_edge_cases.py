@@ -43,7 +43,7 @@ class TestPropagationEdgeCases:
     def test_nyquist_criterion_violation(self) -> None:
         """Test that Nyquist criterion violation raises ValueError."""
         field = np.ones((64, 64), dtype=np.complex128)
-        
+
         # Create a grid with pixel pitch that violates Nyquist criterion
         # The criterion is: max_spatial_freq * wavelength < 1.0
         # where max_spatial_freq = 1 / (2 * pixel_pitch)
@@ -54,7 +54,7 @@ class TestPropagationEdgeCases:
         wavelength = 532e-9
         grid = GridSpec(height=64, width=64, pixel_pitch=wavelength / 2)
         optics = OpticalConfig(wavelength=wavelength, propagation_distance=0.01)
-        
+
         with pytest.raises(ValueError, match="Nyquist criterion violated"):
             angular_spectrum_propagate(field, grid, optics, distance=0.01)
 
@@ -68,7 +68,7 @@ class TestShapesEdgeCases:
             name="circle_checker", min_radius=0.0, max_radius=0.001, checker_size=8
         )
         grid = GridSpec(height=64, width=64, pixel_pitch=5e-6)
-        
+
         # Generate with very small radius that might create empty mask
         result = generator.generate(grid, rng)
         assert result.shape == (64, 64)
@@ -85,7 +85,7 @@ class TestShapesEdgeCases:
             checker_size=8,
         )
         grid = GridSpec(height=64, width=64, pixel_pitch=5e-6)
-        
+
         # Generate with very small radii that might create empty mask
         result = generator.generate(grid, rng)
         assert result.shape == (64, 64)
@@ -97,7 +97,7 @@ class TestShapesEdgeCases:
             name="triangle_checker", min_scale=0.0, max_scale=0.001, checker_size=8
         )
         grid = GridSpec(height=64, width=64, pixel_pitch=5e-6)
-        
+
         # Generate with very small scale that might create empty mask
         result = generator.generate(grid, rng)
         assert result.shape == (64, 64)
@@ -109,7 +109,7 @@ class TestShapesEdgeCases:
             name="triangle_checker", min_scale=0.5, max_scale=0.8, checker_size=4
         )
         grid = GridSpec(height=32, width=32, pixel_pitch=5e-6)
-        
+
         # Generate multiple times to increase chance of hitting edge cases
         for _ in range(10):
             result = generator.generate(grid, rng)
@@ -124,7 +124,7 @@ class TestShapesEdgeCases:
             name="rectangle_checker", min_scale=0.0, max_scale=0.001, checker_size=8
         )
         grid = GridSpec(height=64, width=64, pixel_pitch=5e-6)
-        
+
         # Generate with very small scale that creates invalid bounds
         result = generator.generate(grid, rng)
         assert result.shape == (64, 64)
@@ -139,7 +139,7 @@ class TestIOEdgeCases:
     ) -> None:
         """Test phase colormap fallback when matplotlib is not available."""
         import builtins
-        import sys
+
         from hologen.types import ComplexObjectSample, FieldRepresentation
 
         # Save original import
@@ -161,7 +161,7 @@ class TestIOEdgeCases:
 
         # Create writer with colormap (should fall back to grayscale)
         writer = ComplexFieldWriter(save_preview=True, phase_colormap="twilight")
-        
+
         # Save should work even without matplotlib
         from hologen.types import ComplexHologramSample
 
@@ -172,9 +172,9 @@ class TestIOEdgeCases:
             reconstruction_field=field,
             reconstruction_representation=FieldRepresentation.PHASE,
         )
-        
+
         writer.save([hologram_sample], tmp_path)
-        
+
         # Check that files were created (using grayscale fallback)
         assert (tmp_path / "sample_00000_test_object.png").exists()
 
@@ -223,6 +223,6 @@ class TestIOEdgeCases:
             output_dir = tmp_path / colormap
             writer = ComplexFieldWriter(save_preview=True, phase_colormap=colormap)
             writer.save(samples, output_dir)
-            
+
             # Verify files were created
             assert (output_dir / "sample_00000_circle_object.png").exists()

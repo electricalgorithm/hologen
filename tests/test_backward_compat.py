@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 from numpy.random import Generator
 
 from hologen.converters import (
@@ -39,21 +38,21 @@ class TestLegacyIntensityWorkflow:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         # Generate with use_complex=False (legacy mode)
         samples = list(
             dataset_gen.generate(
                 count=2, config=inline_config, rng=rng, use_complex=False
             )
         )
-        
+
         assert len(samples) == 2
-        
+
         for sample in samples:
             assert isinstance(sample, HologramSample)
             assert isinstance(sample.object_sample, ObjectSample)
@@ -70,21 +69,21 @@ class TestLegacyIntensityWorkflow:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
             dataset_gen.generate(
                 count=1, config=inline_config, rng=rng, use_complex=False
             )
         )
-        
+
         writer = NumpyDatasetWriter(save_preview=True)
         writer.save(samples, tmp_path)
-        
+
         # Check files exist
         assert (tmp_path / "sample_00000_circle.npz").exists()
         assert (tmp_path / "sample_00000_circle_object.png").exists()
@@ -94,7 +93,7 @@ class TestLegacyIntensityWorkflow:
     def test_default_output_config_is_intensity(self) -> None:
         """Test that default OutputConfig uses intensity representation."""
         config = OutputConfig()
-        
+
         assert config.object_representation == FieldRepresentation.INTENSITY
         assert config.hologram_representation == FieldRepresentation.INTENSITY
         assert config.reconstruction_representation == FieldRepresentation.INTENSITY
@@ -102,10 +101,19 @@ class TestLegacyIntensityWorkflow:
     def test_default_converter_has_intensity_config(self) -> None:
         """Test that default converter uses intensity-only output config."""
         converter = default_converter()
-        
-        assert converter.output_config.object_representation == FieldRepresentation.INTENSITY
-        assert converter.output_config.hologram_representation == FieldRepresentation.INTENSITY
-        assert converter.output_config.reconstruction_representation == FieldRepresentation.INTENSITY
+
+        assert (
+            converter.output_config.object_representation
+            == FieldRepresentation.INTENSITY
+        )
+        assert (
+            converter.output_config.hologram_representation
+            == FieldRepresentation.INTENSITY
+        )
+        assert (
+            converter.output_config.reconstruction_representation
+            == FieldRepresentation.INTENSITY
+        )
 
 
 class TestLegacyFileLoading:
@@ -122,10 +130,10 @@ class TestLegacyFileLoading:
             hologram=pixels * 0.5,
             reconstruction=pixels * 0.8,
         )
-        
+
         # Load using new loader
         sample = load_complex_sample(npz_path)
-        
+
         assert isinstance(sample, ObjectSample)
         assert np.allclose(sample.pixels, pixels)
         assert sample.name == "legacy_sample"
@@ -135,9 +143,9 @@ class TestLegacyFileLoading:
         pixels = np.ones((32, 32), dtype=np.float64)
         npz_path = tmp_path / "old_format.npz"
         np.savez(npz_path, object=pixels)
-        
+
         sample = load_complex_sample(npz_path)
-        
+
         assert isinstance(sample, ObjectSample)
         assert np.allclose(sample.pixels, pixels)
 
@@ -150,7 +158,7 @@ class TestBackwardCompatibleDefaults:
     ) -> None:
         """Test that generate_dataset without arguments produces intensity output."""
         writer = NumpyDatasetWriter(save_preview=False)
-        
+
         # Call with minimal arguments (should default to intensity)
         generate_dataset(
             count=1,
@@ -159,13 +167,13 @@ class TestBackwardCompatibleDefaults:
             writer=writer,
             output_dir=tmp_path,
         )
-        
+
         # Load the generated file
         npz_path = tmp_path / "sample_00000_circle.npz"
         assert npz_path.exists()
-        
+
         data = np.load(npz_path)
-        
+
         # Should have legacy keys
         assert "object" in data
         assert "hologram" in data
@@ -177,9 +185,12 @@ class TestBackwardCompatibleDefaults:
         """Test that converter without output_config defaults to intensity."""
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         # Should have default intensity config
-        assert converter.output_config.object_representation == FieldRepresentation.INTENSITY
+        assert (
+            converter.output_config.object_representation
+            == FieldRepresentation.INTENSITY
+        )
 
 
 class TestLegacyObjectSampleStillWorks:
@@ -189,7 +200,7 @@ class TestLegacyObjectSampleStillWorks:
         """Test that ObjectSample can still be created."""
         pixels = np.ones((64, 64), dtype=np.float64)
         sample = ObjectSample(name="test", pixels=pixels)
-        
+
         assert sample.name == "test"
         assert np.array_equal(sample.pixels, pixels)
 
@@ -197,13 +208,13 @@ class TestLegacyObjectSampleStillWorks:
         """Test that HologramSample can still be created."""
         pixels = np.ones((64, 64), dtype=np.float64)
         object_sample = ObjectSample(name="test", pixels=pixels)
-        
+
         hologram_sample = HologramSample(
             object_sample=object_sample,
             hologram=pixels * 0.5,
             reconstruction=pixels * 0.8,
         )
-        
+
         assert hologram_sample.object_sample is object_sample
         assert hologram_sample.hologram.shape == (64, 64)
         assert hologram_sample.reconstruction.shape == (64, 64)
@@ -214,14 +225,16 @@ class TestLegacyObjectSampleStillWorks:
         """Test that legacy ObjectSample works with converter."""
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         # Create legacy sample
-        pixels = np.ones((inline_config.grid.height, inline_config.grid.width), dtype=np.float64)
+        pixels = np.ones(
+            (inline_config.grid.height, inline_config.grid.width), dtype=np.float64
+        )
         legacy_sample = ObjectSample(name="test", pixels=pixels)
-        
+
         # Should work with converter
         hologram = converter.create_hologram(legacy_sample, inline_config)
-        
+
         assert isinstance(hologram, np.ndarray)
         assert hologram.dtype == np.float64
         assert not np.iscomplexobj(hologram)
@@ -238,20 +251,20 @@ class TestNoRegressions:
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
         converter = ObjectToHologramConverter(strategy_mapping=strategy_mapping)
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
             dataset_gen.generate(
                 count=1, config=inline_config, rng=rng, use_complex=False
             )
         )
-        
+
         sample = samples[0]
-        
+
         # All intensity values should be non-negative
         assert np.all(sample.object_sample.pixels >= 0.0)
         assert np.all(sample.hologram >= 0.0)
@@ -262,9 +275,9 @@ class TestNoRegressions:
     ) -> None:
         """Test that shape generators still produce binary (0 or 1) output."""
         generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
-        
+
         field = generator.generate(grid_spec, rng)
-        
+
         # Should be binary values
         unique_values = np.unique(field)
         assert len(unique_values) <= 2

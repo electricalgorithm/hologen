@@ -300,7 +300,8 @@ class TestOffAxisHolographyStrategy:
 
         # Test with zero object field - should still have reference wave energy
         zero_field = np.zeros(
-            (off_axis_config.grid.height, off_axis_config.grid.width), dtype=np.complex128
+            (off_axis_config.grid.height, off_axis_config.grid.width),
+            dtype=np.complex128,
         )
         hologram = strategy.create_hologram(zero_field, off_axis_config)
 

@@ -6,7 +6,6 @@ import numpy as np
 
 from hologen.holography.propagation import angular_spectrum_propagate
 from hologen.types import ArrayComplex, ArrayFloat, HolographyConfig, HolographyStrategy
-from hologen.utils.math import gaussian_blur
 
 
 def _object_to_complex(object_field: ArrayFloat) -> ArrayComplex:
@@ -85,7 +84,9 @@ class OffAxisHolographyStrategy(HolographyStrategy):
         hologram_field = propagated + reference
         return hologram_field
 
-    def reconstruct(self, hologram: ArrayComplex, config: HolographyConfig) -> ArrayComplex:
+    def reconstruct(
+        self, hologram: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
         """Reconstruct the object domain from an off-axis hologram."""
 
         if config.carrier is None:

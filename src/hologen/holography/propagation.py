@@ -61,7 +61,7 @@ def angular_spectrum_propagate(
     wavelength = optics.wavelength
     max_spatial_freq = 1.0 / (2.0 * grid.pixel_pitch)
     normalized_freq = max_spatial_freq * wavelength
-    
+
     if normalized_freq >= 1.0:
         raise ValueError(
             f"Nyquist criterion violated: maximum spatial frequency "

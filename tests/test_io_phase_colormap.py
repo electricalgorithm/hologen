@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
-import pytest
 from numpy.random import Generator
 
 from hologen.converters import (
@@ -118,7 +116,9 @@ class TestPhaseColormap:
         )
 
         samples = list(
-            dataset_gen.generate(count=1, config=inline_config, rng=rng, use_complex=True)
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=True
+            )
         )
 
         writer = ComplexFieldWriter(save_preview=True)

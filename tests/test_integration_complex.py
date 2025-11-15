@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 from numpy.random import Generator
 
 from hologen.converters import (
@@ -44,19 +43,21 @@ class TestEndToEndPipeline:
                 reconstruction_representation=FieldRepresentation.COMPLEX,
             ),
         )
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         # Generate samples
         samples = list(
-            dataset_gen.generate(count=2, config=inline_config, rng=rng, use_complex=True)
+            dataset_gen.generate(
+                count=2, config=inline_config, rng=rng, use_complex=True
+            )
         )
-        
+
         assert len(samples) == 2
-        
+
         for sample in samples:
             assert isinstance(sample, ComplexHologramSample)
             assert np.iscomplexobj(sample.hologram_field)
@@ -81,12 +82,12 @@ class TestEndToEndPipeline:
                 reconstruction_representation=FieldRepresentation.COMPLEX,
             ),
         )
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
             dataset_gen.generate(
                 count=1,
@@ -97,9 +98,9 @@ class TestEndToEndPipeline:
                 phase_shift=np.pi / 2,
             )
         )
-        
+
         sample = samples[0]
-        
+
         # Object should have uniform amplitude
         object_amplitude = np.abs(sample.object_sample.field)
         assert np.allclose(object_amplitude, 1.0)
@@ -123,24 +124,26 @@ class TestOutputFileNaming:
                 reconstruction_representation=FieldRepresentation.COMPLEX,
             ),
         )
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
-            dataset_gen.generate(count=1, config=inline_config, rng=rng, use_complex=True)
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=True
+            )
         )
-        
+
         writer = ComplexFieldWriter(save_preview=True, phase_colormap=None)
         writer.save(samples, tmp_path)
-        
+
         # Check .npz files
         assert (tmp_path / "sample_00000_circle_object.npz").exists()
         assert (tmp_path / "sample_00000_circle_hologram.npz").exists()
         assert (tmp_path / "sample_00000_circle_reconstruction.npz").exists()
-        
+
         # Check PNG files (amplitude and phase for complex representation)
         assert (tmp_path / "sample_00000_circle_object_amplitude.png").exists()
         assert (tmp_path / "sample_00000_circle_object_phase.png").exists()
@@ -162,19 +165,21 @@ class TestOutputFileNaming:
                 reconstruction_representation=FieldRepresentation.AMPLITUDE,
             ),
         )
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
-            dataset_gen.generate(count=1, config=inline_config, rng=rng, use_complex=True)
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=True
+            )
         )
-        
+
         writer = ComplexFieldWriter(save_preview=True)
         writer.save(samples, tmp_path)
-        
+
         # Check PNG files (single file for amplitude representation)
         assert (tmp_path / "sample_00000_circle_object.png").exists()
         assert (tmp_path / "sample_00000_circle_hologram.png").exists()
@@ -189,11 +194,11 @@ class TestNoiseModelWithComplexFields:
     ) -> None:
         """Test that noise model preserves phase information."""
         from hologen.noise.sensor import SensorNoiseModel
-        
+
         generator = CircleGenerator(name="circle", min_radius=0.1, max_radius=0.2)
         producer = ObjectDomainProducer(shape_generators=(generator,))
         strategy_mapping = {HolographyMethod.INLINE: InlineHolographyStrategy()}
-        
+
         # Add noise model
         noise_model = SensorNoiseModel(
             name="sensor",
@@ -202,7 +207,7 @@ class TestNoiseModelWithComplexFields:
             dark_current=0.0,
             bit_depth=None,
         )
-        
+
         converter = ObjectToHologramConverter(
             strategy_mapping=strategy_mapping,
             noise_model=noise_model,
@@ -212,21 +217,23 @@ class TestNoiseModelWithComplexFields:
                 reconstruction_representation=FieldRepresentation.COMPLEX,
             ),
         )
-        
+
         dataset_gen = HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
-        
+
         samples = list(
-            dataset_gen.generate(count=1, config=inline_config, rng=rng, use_complex=True)
+            dataset_gen.generate(
+                count=1, config=inline_config, rng=rng, use_complex=True
+            )
         )
-        
+
         sample = samples[0]
-        
+
         # Hologram should still be complex after noise application
         assert np.iscomplexobj(sample.hologram_field)
-        
+
         # Phase should still have variation
         phase_var = np.var(np.angle(sample.hologram_field))
         assert phase_var > 0

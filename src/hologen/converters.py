@@ -12,6 +12,12 @@ from numpy.random import Generator
 
 from hologen.holography.inline import InlineHolographyStrategy
 from hologen.holography.off_axis import OffAxisHolographyStrategy
+from hologen.noise import (
+    AberrationNoiseModel,
+    CompositeNoiseModel,
+    SensorNoiseModel,
+    SpeckleNoiseModel,
+)
 from hologen.shapes import available_generators
 from hologen.types import (
     ArrayComplex,
@@ -26,16 +32,11 @@ from hologen.types import (
     HolographyConfig,
     HolographyMethod,
     HolographyStrategy,
+    NoiseConfig,
     NoiseModel,
     ObjectSample,
     ObjectShapeGenerator,
     OutputConfig,
-)
-from hologen.noise import (
-    AberrationNoiseModel,
-    CompositeNoiseModel,
-    SensorNoiseModel,
-    SpeckleNoiseModel,
 )
 from hologen.utils.math import normalize_image
 
@@ -87,7 +88,7 @@ class ObjectDomainProducer:
 
         generator = cast(ObjectShapeGenerator, rng.choice(self.shape_generators))
         field = generator.generate_complex(grid, rng, phase_shift, mode)
-        
+
         # Determine representation based on mode
         if mode == "amplitude":
             representation = FieldRepresentation.AMPLITUDE
@@ -95,7 +96,7 @@ class ObjectDomainProducer:
             representation = FieldRepresentation.PHASE
         else:
             representation = FieldRepresentation.COMPLEX
-        
+
         return ComplexObjectSample(
             name=generator.name,
             field=field,
@@ -135,7 +136,7 @@ class ObjectToHologramConverter:
         """
 
         strategy = self._resolve_strategy(config.method)
-        
+
         # Handle legacy ObjectSample by converting to complex field
         if isinstance(sample, ObjectSample):
             complex_field = sample.pixels.astype(np.complex128)
@@ -143,22 +144,22 @@ class ObjectToHologramConverter:
         else:
             complex_field = sample.field
             is_legacy = False
-        
+
         hologram_field = strategy.create_hologram(complex_field, config)
-        
+
         # Apply noise model to intensity representation while preserving phase
         if self.noise_model is not None and rng is not None:
             # Extract intensity and phase
             intensity = np.abs(hologram_field) ** 2
             phase = np.angle(hologram_field)
-            
+
             # Apply noise to intensity
             noisy_intensity = self.noise_model.apply(intensity, config, rng)
-            
+
             # Reconstruct complex field with noisy amplitude and original phase
             amplitude = np.sqrt(np.maximum(noisy_intensity, 0.0))
             hologram_field = amplitude * np.exp(1j * phase)
-        
+
         # Return intensity for legacy samples, complex for new samples
         if is_legacy:
             return np.abs(hologram_field) ** 2
@@ -178,18 +179,18 @@ class ObjectToHologramConverter:
         """
 
         strategy = self._resolve_strategy(config.method)
-        
+
         # Detect if this is legacy intensity data (real-valued)
         is_legacy = not np.iscomplexobj(hologram)
-        
+
         if is_legacy:
             # Convert intensity to complex field (assume amplitude from sqrt)
             hologram_complex = np.sqrt(np.maximum(hologram, 0.0)).astype(np.complex128)
         else:
             hologram_complex = hologram
-        
+
         reconstruction = strategy.reconstruct(hologram_complex, config)
-        
+
         # Return amplitude for legacy, complex for new
         if is_legacy:
             return np.abs(reconstruction)
@@ -254,7 +255,7 @@ class HologramDatasetGenerator(DatasetGenerator):
                 object_sample = self.object_producer.generate_complex(
                     config.grid, rng, phase_shift, mode
                 )
-                
+
                 # Override representation with output_config
                 output_config = self.converter.output_config
                 object_sample = ComplexObjectSample(
@@ -262,11 +263,15 @@ class HologramDatasetGenerator(DatasetGenerator):
                     field=object_sample.field,
                     representation=output_config.object_representation,
                 )
-                
+
                 # Create hologram and reconstruction
-                hologram_field = self.converter.create_hologram(object_sample, config, rng)
-                reconstruction_field = self.converter.reconstruct(hologram_field, config)
-                
+                hologram_field = self.converter.create_hologram(
+                    object_sample, config, rng
+                )
+                reconstruction_field = self.converter.reconstruct(
+                    hologram_field, config
+                )
+
                 yield ComplexHologramSample(
                     object_sample=object_sample,
                     hologram_field=hologram_field,
@@ -279,7 +284,7 @@ class HologramDatasetGenerator(DatasetGenerator):
                 object_sample = self.object_producer.generate(config.grid, rng)
                 hologram = self.converter.create_hologram(object_sample, config, rng)
                 reconstruction = self.converter.reconstruct(hologram, config)
-                
+
                 yield HologramSample(
                     object_sample=object_sample,
                     hologram=hologram,
@@ -294,14 +299,18 @@ def default_object_producer() -> ObjectDomainProducer:
     return ObjectDomainProducer(shape_generators=generators)
 
 
-def default_converter(noise_model: NoiseModel | None = None) -> ObjectToHologramConverter:
+def default_converter(
+    noise_model: NoiseModel | None = None,
+) -> ObjectToHologramConverter:
     """Create the default converter with inline and off-axis strategies."""
 
     strategies: dict[HolographyMethod, HolographyStrategy] = {
         HolographyMethod.INLINE: InlineHolographyStrategy(),
         HolographyMethod.OFF_AXIS: OffAxisHolographyStrategy(),
     }
-    return ObjectToHologramConverter(strategy_mapping=strategies, noise_model=noise_model)
+    return ObjectToHologramConverter(
+        strategy_mapping=strategies, noise_model=noise_model
+    )
 
 
 def generate_dataset(

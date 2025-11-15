@@ -12,9 +12,9 @@ from hologen.converters import (
     HologramDatasetGenerator,
     ObjectDomainProducer,
     ObjectToHologramConverter,
+    create_noise_model,
     default_converter,
     default_object_producer,
-    create_noise_model
 )
 from hologen.types import (
     FieldRepresentation,
@@ -32,13 +32,13 @@ from hologen.utils.io import ComplexFieldWriter, NumpyDatasetWriter
 
 def validate_phase_shift(value: str) -> float:
     """Validate that phase shift is in [0, 2π] range.
-    
+
     Args:
         value: Phase shift value in radians as a string.
-        
+
     Returns:
         Validated phase shift value as a float.
-        
+
     Raises:
         argparse.ArgumentTypeError: If value is outside valid range.
     """
@@ -46,7 +46,7 @@ def validate_phase_shift(value: str) -> float:
         float_value = float(value)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid float value: {value}")
-    
+
     if not (0.0 <= float_value <= 2 * np.pi):
         raise argparse.ArgumentTypeError(
             f"Phase shift must be in [0, 2π] range, got {float_value:.4f}"
@@ -200,6 +200,7 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 def build_noise_config(args: argparse.Namespace) -> NoiseConfig | None:
     """Construct noise configuration from command-line arguments."""
 
@@ -216,7 +217,7 @@ def build_noise_config(args: argparse.Namespace) -> NoiseConfig | None:
         aberration_coma_x=args.aberration_coma_x,
         aberration_coma_y=args.aberration_coma_y,
     )
-    
+
     has_any_noise = (
         config.sensor_read_noise > 0.0
         or config.sensor_shot_noise
@@ -229,7 +230,7 @@ def build_noise_config(args: argparse.Namespace) -> NoiseConfig | None:
         or config.aberration_coma_x != 0.0
         or config.aberration_coma_y != 0.0
     )
-    
+
     return config if has_any_noise else None
 
 
@@ -259,33 +260,33 @@ def main() -> None:
     config: HolographyConfig = build_config(args)
     noise_config: NoiseConfig = build_noise_config(args)
     producer: ObjectDomainProducer = default_object_producer()
-    
+
     # Set the converter based on noise selection.
     noise_model: NoiseModel | None = None
     if noise_config is not None:
         noise_model: NoiseModel = create_noise_model(noise_config)
-    
+
     # Create OutputConfig from command-line arguments
     output_config = OutputConfig(
         object_representation=FieldRepresentation(args.object_type),
         hologram_representation=FieldRepresentation(args.output_domain),
         reconstruction_representation=FieldRepresentation(args.output_domain),
     )
-    
+
     # Set the Holography converter (forward-propagation).
     converter: ObjectToHologramConverter = default_converter(noise_model)
     converter.output_config = output_config
 
     # Create a dataset generator.
     generator = HologramDatasetGenerator(object_producer=producer, converter=converter)
-    
+
     # Select appropriate writer based on output-domain
     use_complex = args.output_domain != "intensity"
     if use_complex:
         writer = ComplexFieldWriter(save_preview=not args.no_preview)
     else:
         writer = NumpyDatasetWriter(save_preview=not args.no_preview)
-    
+
     # Generate samples with appropriate parameters
     samples = generator.generate(
         count=args.samples,
@@ -295,7 +296,7 @@ def main() -> None:
         mode=args.object_type,
         use_complex=use_complex,
     )
-    
+
     writer.save(samples=samples, output_dir=args.output)
 
 

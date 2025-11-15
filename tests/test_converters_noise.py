@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from hologen.converters import create_noise_model
 from hologen.noise.aberrations import AberrationNoiseModel
 from hologen.noise.composite import CompositeNoiseModel
