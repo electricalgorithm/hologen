@@ -6,3 +6,5 @@ test_dataset_inline
 htmlcov
 .pytest_cache
 .ruff_cache
+.kiro
+.cursor
