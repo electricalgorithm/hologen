@@ -7,7 +7,7 @@ name = "hologen"
 version = "0.3.0"
 description = "Holography dataset generation toolkit"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 authors = [
     { name = "Gyokhan Kochmarla", email = "hello@gyokhan.com" },
 ]
@@ -26,7 +26,7 @@ dev = [
 ]
 
 [tool.black]
-target-version = ["py313", "py312", "py311"]
+target-version = ["py313"]
 line-length = 88
 
 [tool.ruff]
