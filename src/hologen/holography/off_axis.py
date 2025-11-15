@@ -63,16 +63,15 @@ class OffAxisHolographyStrategy(HolographyStrategy):
     """Implement off-axis hologram generation and reconstruction."""
 
     def create_hologram(
-        self, object_field: ArrayFloat, config: HolographyConfig
-    ) -> ArrayFloat:
-        """Generate an off-axis hologram from an object-domain amplitude field."""
+        self, object_field: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
+        """Generate an off-axis hologram from an object-domain complex field."""
 
         if config.carrier is None:
             raise ValueError("Off-axis holography requires carrier configuration.")
 
-        complex_object = _object_to_complex(object_field)
         propagated = angular_spectrum_propagate(
-            field=complex_object,
+            field=object_field,
             grid=config.grid,
             optics=config.optics,
             distance=config.optics.propagation_distance,
@@ -83,30 +82,29 @@ class OffAxisHolographyStrategy(HolographyStrategy):
             carrier_y=config.carrier.frequency_y,
             pixel_pitch=config.grid.pixel_pitch,
         )
-        field = propagated + reference
-        hologram = _field_to_intensity(field)
-        return hologram.astype(np.float64)
+        hologram_field = propagated + reference
+        return hologram_field
 
-    def reconstruct(self, hologram: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
+    def reconstruct(self, hologram: ArrayComplex, config: HolographyConfig) -> ArrayComplex:
         """Reconstruct the object domain from an off-axis hologram."""
 
         if config.carrier is None:
             raise ValueError("Off-axis holography requires carrier configuration.")
 
+        # Convert to intensity for Fourier filtering
+        hologram_intensity = np.abs(hologram) ** 2
         filtered = _fourier_filter(
-            hologram=hologram,
+            hologram=hologram_intensity,
             carrier_x=config.carrier.frequency_x,
             carrier_y=config.carrier.frequency_y,
             sigma=config.carrier.gaussian_width,
             grid=(config.grid.height, config.grid.width),
             pixel_pitch=config.grid.pixel_pitch,
         )
-        propagated = angular_spectrum_propagate(
-            field=filtered.astype(np.complex128),
+        reconstructed = angular_spectrum_propagate(
+            field=filtered,
             grid=config.grid,
             optics=config.optics,
             distance=-config.optics.propagation_distance,
         )
-        amplitude = np.abs(propagated)
-        smoothed = gaussian_blur(amplitude, sigma=1.0)
-        return smoothed.astype(np.float64)
+        return reconstructed

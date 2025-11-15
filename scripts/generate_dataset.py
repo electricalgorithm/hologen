@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 from numpy.random import default_rng
 
 from hologen.converters import (
@@ -16,6 +17,7 @@ from hologen.converters import (
     create_noise_model
 )
 from hologen.types import (
+    FieldRepresentation,
     GridSpec,
     HolographyConfig,
     HolographyMethod,
@@ -23,8 +25,33 @@ from hologen.types import (
     NoiseModel,
     OffAxisCarrier,
     OpticalConfig,
+    OutputConfig,
 )
-from hologen.utils.io import NumpyDatasetWriter
+from hologen.utils.io import ComplexFieldWriter, NumpyDatasetWriter
+
+
+def validate_phase_shift(value: str) -> float:
+    """Validate that phase shift is in [0, 2π] range.
+    
+    Args:
+        value: Phase shift value in radians as a string.
+        
+    Returns:
+        Validated phase shift value as a float.
+        
+    Raises:
+        argparse.ArgumentTypeError: If value is outside valid range.
+    """
+    try:
+        float_value = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid float value: {value}")
+    
+    if not (0.0 <= float_value <= 2 * np.pi):
+        raise argparse.ArgumentTypeError(
+            f"Phase shift must be in [0, 2π] range, got {float_value:.4f}"
+        )
+    return float_value
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +110,26 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--no-preview", action="store_true", help="Disable PNG preview generation."
+    )
+    parser.add_argument(
+        "--object-type",
+        type=str,
+        default="amplitude",
+        choices=["amplitude", "phase", "complex"],
+        help="Object domain representation type (default: amplitude).",
+    )
+    parser.add_argument(
+        "--output-domain",
+        type=str,
+        default="intensity",
+        choices=["intensity", "amplitude", "phase", "complex"],
+        help="Hologram output representation type (default: intensity).",
+    )
+    parser.add_argument(
+        "--phase-shift",
+        type=validate_phase_shift,
+        default=np.pi / 2,
+        help="Phase shift in radians for phase-only objects (default: π/2).",
     )
     noise_group = parser.add_argument_group("noise", "Noise simulation parameters")
     noise_group.add_argument(
@@ -218,16 +265,38 @@ def main() -> None:
     if noise_config is not None:
         noise_model: NoiseModel = create_noise_model(noise_config)
     
+    # Create OutputConfig from command-line arguments
+    output_config = OutputConfig(
+        object_representation=FieldRepresentation(args.object_type),
+        hologram_representation=FieldRepresentation(args.output_domain),
+        reconstruction_representation=FieldRepresentation(args.output_domain),
+    )
+    
     # Set the Holography converter (forward-propagation).
     converter: ObjectToHologramConverter = default_converter(noise_model)
+    converter.output_config = output_config
 
     # Create a dataset generator.
     generator = HologramDatasetGenerator(object_producer=producer, converter=converter)
-    writer = NumpyDatasetWriter(save_preview=not args.no_preview)
-    writer.save(
-        samples=generator.generate(count=args.samples, config=config, rng=rng),
-        output_dir=args.output,
+    
+    # Select appropriate writer based on output-domain
+    use_complex = args.output_domain != "intensity"
+    if use_complex:
+        writer = ComplexFieldWriter(save_preview=not args.no_preview)
+    else:
+        writer = NumpyDatasetWriter(save_preview=not args.no_preview)
+    
+    # Generate samples with appropriate parameters
+    samples = generator.generate(
+        count=args.samples,
+        config=config,
+        rng=rng,
+        phase_shift=args.phase_shift,
+        mode=args.object_type,
+        use_complex=use_complex,
     )
+    
+    writer.save(samples=samples, output_dir=args.output)
 
 
 if __name__ == "__main__":

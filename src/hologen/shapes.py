@@ -6,7 +6,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.random import Generator
 
-from hologen.types import ArrayFloat, GridSpec, ObjectShapeGenerator
+from hologen.types import ArrayComplex, ArrayFloat, GridSpec, ObjectShapeGenerator
+from hologen.utils.fields import amplitude_phase_to_complex, validate_phase_range
 
 
 @dataclass(slots=True)
@@ -59,6 +60,52 @@ class BaseShapeGenerator(ObjectShapeGenerator):
 
         np.clip(canvas, 0.0, 1.0, out=canvas)
         return canvas
+
+    def generate_complex(
+        self,
+        grid: GridSpec,
+        rng: Generator,
+        phase_shift: float = 0.0,
+        mode: str = "amplitude",
+    ) -> ArrayComplex:
+        """Generate a complex-valued object field.
+
+        Args:
+            grid: Grid specification describing the desired output resolution.
+            rng: Random number generator providing stochastic parameters.
+            phase_shift: Phase modulation in radians for phase-only objects.
+            mode: Generation mode - "amplitude" (shape with zero phase),
+                  "phase" (uniform amplitude with phase modulation).
+
+        Returns:
+            Complex-valued field with amplitude and phase components.
+
+        Raises:
+            ValueError: If mode is not "amplitude" or "phase".
+            PhaseRangeError: If generated phase values are outside [-π, π].
+        """
+        if mode not in ("amplitude", "phase"):
+            raise ValueError(
+                f"Invalid mode '{mode}'. Valid options are 'amplitude' or 'phase'."
+            )
+
+        # Generate the binary shape mask
+        shape_mask = self.generate(grid, rng)
+
+        if mode == "amplitude":
+            # Amplitude mode: shape modulates amplitude, zero phase everywhere
+            amplitude = shape_mask
+            phase = np.zeros_like(shape_mask)
+        else:  # mode == "phase"
+            # Phase mode: uniform amplitude, shape modulates phase
+            amplitude = np.ones_like(shape_mask)
+            phase = np.where(shape_mask > 0.5, phase_shift, 0.0)
+
+        # Validate phase values are in valid range
+        validate_phase_range(phase)
+
+        # Construct complex field from amplitude and phase
+        return amplitude_phase_to_complex(amplitude, phase)
 
 
 class CircleGenerator(BaseShapeGenerator):

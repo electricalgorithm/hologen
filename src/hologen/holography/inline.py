@@ -24,28 +24,25 @@ class InlineHolographyStrategy(HolographyStrategy):
     """Implement inline hologram generation and reconstruction."""
 
     def create_hologram(
-        self, object_field: ArrayFloat, config: HolographyConfig
-    ) -> ArrayFloat:
-        """Generate an inline hologram from an object-domain amplitude field."""
+        self, object_field: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
+        """Generate an inline hologram from an object-domain complex field."""
 
-        complex_object = _object_to_complex(object_field)
         propagated = angular_spectrum_propagate(
-            field=complex_object,
+            field=object_field,
             grid=config.grid,
             optics=config.optics,
             distance=config.optics.propagation_distance,
         )
-        hologram = _field_to_intensity(propagated)
-        return hologram.astype(np.float64)
+        return propagated
 
-    def reconstruct(self, hologram: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
+    def reconstruct(self, hologram: ArrayComplex, config: HolographyConfig) -> ArrayComplex:
         """Reconstruct the object domain from an inline hologram."""
 
-        field = np.sqrt(np.maximum(hologram, 0.0)).astype(np.complex128)
         reconstructed = angular_spectrum_propagate(
-            field=field,
+            field=hologram,
             grid=config.grid,
             optics=config.optics,
             distance=-config.optics.propagation_distance,
         )
-        return np.abs(reconstructed).astype(np.float64)
+        return reconstructed

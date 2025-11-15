@@ -53,12 +53,29 @@ def angular_spectrum_propagate(
     if distance == 0.0:
         return field
 
+    # Validate sampling criterion for angular spectrum method.
+    # The Nyquist criterion requires that the maximum spatial frequency
+    # representable by the grid does not exceed the physical limit set by
+    # the wavelength: f_max * lambda < 1, where f_max = 1 / (2 * pixel_pitch).
+    # This ensures all propagating plane waves are properly sampled without aliasing.
+    wavelength = optics.wavelength
+    max_spatial_freq = 1.0 / (2.0 * grid.pixel_pitch)
+    normalized_freq = max_spatial_freq * wavelength
+    
+    if normalized_freq >= 1.0:
+        raise ValueError(
+            f"Nyquist criterion violated: maximum spatial frequency "
+            f"({max_spatial_freq:.2e} cycles/m) times wavelength ({wavelength:.2e} m) "
+            f"= {normalized_freq:.3f} must be < 1.0. "
+            f"Reduce pixel pitch (currently {grid.pixel_pitch:.2e} m) to at least "
+            f"{wavelength / 2:.2e} m."
+        )
+
     # Spatial frequency coordinates for the sampled grid (cycles per meter).
     fy = np.fft.fftfreq(grid.height, d=grid.pixel_pitch)
     fx = np.fft.fftfreq(grid.width, d=grid.pixel_pitch)
     fx_mesh, fy_mesh = np.meshgrid(fx, fy, indexing="xy")
 
-    wavelength = optics.wavelength
     k = 2.0 * np.pi / wavelength
 
     # Compute the squared longitudinal component argument:

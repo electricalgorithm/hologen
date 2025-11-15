@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
+from enum import Enum, StrEnum, auto, unique
 from pathlib import Path
 from typing import Protocol
 
@@ -21,6 +21,16 @@ class HolographyMethod(str, Enum):
 
     INLINE = "inline"
     OFF_AXIS = "off_axis"
+
+
+@unique
+class FieldRepresentation(StrEnum):
+    """Enumeration of field representation types."""
+
+    INTENSITY = auto()
+    AMPLITUDE = auto()
+    PHASE = auto()
+    COMPLEX = auto()
 
 
 @dataclass(slots=True)
@@ -84,6 +94,27 @@ class HolographyConfig:
 
 
 @dataclass(slots=True)
+class OutputConfig:
+    """Configuration for output field representations.
+
+    Args:
+        object_representation: Field representation type for object domain.
+        hologram_representation: Field representation type for hologram.
+        reconstruction_representation: Field representation type for reconstruction.
+    """
+
+    object_representation: FieldRepresentation = field(
+        default=FieldRepresentation.INTENSITY
+    )
+    hologram_representation: FieldRepresentation = field(
+        default=FieldRepresentation.INTENSITY
+    )
+    reconstruction_representation: FieldRepresentation = field(
+        default=FieldRepresentation.INTENSITY
+    )
+
+
+@dataclass(slots=True)
 class ObjectSample:
     """Object-domain sample representation.
 
@@ -94,6 +125,21 @@ class ObjectSample:
 
     name: str
     pixels: ArrayFloat
+
+
+@dataclass(slots=True)
+class ComplexObjectSample:
+    """Object-domain sample with complex field representation.
+
+    Args:
+        name: Identifier of the shape generator that produced the sample.
+        field: Complex-valued field (amplitude + phase).
+        representation: Field representation type.
+    """
+
+    name: str
+    field: ArrayComplex
+    representation: FieldRepresentation
 
 
 @dataclass(slots=True)
@@ -111,6 +157,25 @@ class HologramSample:
     reconstruction: ArrayFloat
 
 
+@dataclass(slots=True)
+class ComplexHologramSample:
+    """Hologram sample with complex field support.
+
+    Args:
+        object_sample: Reference to the originating complex object-domain sample.
+        hologram_field: Complex hologram field.
+        hologram_representation: Field representation type for hologram.
+        reconstruction_field: Complex reconstruction field.
+        reconstruction_representation: Field representation type for reconstruction.
+    """
+
+    object_sample: ComplexObjectSample
+    hologram_field: ArrayComplex
+    hologram_representation: FieldRepresentation
+    reconstruction_field: ArrayComplex
+    reconstruction_representation: FieldRepresentation
+
+
 class ObjectShapeGenerator(Protocol):
     """Protocol for object-domain shape generators."""
 
@@ -126,12 +191,14 @@ class HolographyStrategy(Protocol):
     """Protocol describing hologram generation and reconstruction operations."""
 
     def create_hologram(
-        self, object_field: ArrayFloat, config: HolographyConfig
-    ) -> ArrayFloat:
-        """Create a hologram from an object-domain amplitude field."""
+        self, object_field: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
+        """Create a hologram from an object-domain complex field."""
 
-    def reconstruct(self, hologram: ArrayFloat, config: HolographyConfig) -> ArrayFloat:
-        """Recover an object-domain field from a hologram."""
+    def reconstruct(
+        self, hologram: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
+        """Recover an object-domain complex field from a hologram."""
 
 
 class DatasetWriter(Protocol):
