@@ -1,5 +1,7 @@
 # HoloGen: Synthetic Hologram Dataset Toolkit
 
+[![DOI](https://zenodo.org/badge/1092625374.svg)](https://doi.org/10.5281/zenodo.17622375)
+
 The HoloGen toolkit generates paired object-domain images and their inline or off-axis holograms for machine learning workflows.
 
 > [See the first dataset (100k, 157.4GB!) generated with the HoloGen in HuggingFace 🤗](https://huggingface.co/datasets/gokhankocmarli/inline-digital-holography/)
