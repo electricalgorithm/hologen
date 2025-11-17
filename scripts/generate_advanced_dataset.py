@@ -20,7 +20,6 @@ from hologen.types import (
     HolographyConfig,
     HolographyMethod,
     NoiseConfig,
-    OffAxisCarrier,
     OpticalConfig,
     OutputConfig,
 )
@@ -131,15 +130,16 @@ def parse_args() -> argparse.Namespace:
         "--samples", type=int, default=100, help="Number of samples to generate."
     )
     parser.add_argument(
-        "--output", type=Path, default=Path("dataset_advanced"), help="Output directory."
+        "--output",
+        type=Path,
+        default=Path("dataset_advanced"),
+        help="Output directory.",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument(
         "--height", type=int, default=512, help="Image height in pixels."
     )
-    parser.add_argument(
-        "--width", type=int, default=512, help="Image width in pixels."
-    )
+    parser.add_argument("--width", type=int, default=512, help="Image width in pixels.")
     parser.add_argument(
         "--pixel-pitch", type=float, default=6.4e-6, help="Pixel pitch in meters."
     )
@@ -213,7 +213,7 @@ def main() -> None:
         )
 
         # Create generator
-        generator = HologramDatasetGenerator(
+        HologramDatasetGenerator(
             object_producer=producer,
             converter=converter,
         )
@@ -223,33 +223,33 @@ def main() -> None:
         object_sample_amp = producer.generate_complex(
             config.grid, rng, phase_shift=0.0, mode="amplitude"
         )
-        
+
         # Then generate phase pattern (using a different shape)
         object_sample_phase = producer.generate_complex(
             config.grid, rng, phase_shift=phase_shift, mode="phase"
         )
-        
+
         # Combine: amplitude from first, phase from second
         amplitude = np.abs(object_sample_amp.field)
         phase = np.angle(object_sample_phase.field)
-        
+
         # Create complex field with both amplitude and phase modulation
+        from hologen.types import ComplexHologramSample, ComplexObjectSample
         from hologen.utils.fields import amplitude_phase_to_complex
-        from hologen.types import ComplexObjectSample, ComplexHologramSample
-        
+
         complex_field = amplitude_phase_to_complex(amplitude, phase)
-        
+
         # Create complex object sample
         object_sample = ComplexObjectSample(
             name=object_sample_amp.name + "_" + object_sample_phase.name,
             field=complex_field,
             representation=output_config.object_representation,
         )
-        
+
         # Create hologram and reconstruction
         hologram_field = converter.create_hologram(object_sample, config, rng)
         reconstruction_field = converter.reconstruct(hologram_field, config)
-        
+
         # Create sample
         sample = ComplexHologramSample(
             object_sample=object_sample,
@@ -258,7 +258,7 @@ def main() -> None:
             reconstruction_field=reconstruction_field,
             reconstruction_representation=output_config.reconstruction_representation,
         )
-        
+
         samples = [sample]
 
         # Save sample with metadata

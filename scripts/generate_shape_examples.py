@@ -124,19 +124,20 @@ def generate_parameter_variations(output_dir: Path) -> None:
     param_dir.mkdir(parents=True, exist_ok=True)
 
     # Circle size variations
-    for i, (min_r, max_r) in enumerate(
-        [(0.05, 0.1), (0.08, 0.18), (0.15, 0.25)]
-    ):
+    for i, (min_r, max_r) in enumerate([(0.05, 0.1), (0.08, 0.18), (0.15, 0.25)]):
         rng = np.random.default_rng(100 + i)
         gen = CircleGenerator(name="circle", min_radius=min_r, max_radius=max_r)
         circle = gen.generate(grid, rng)
-        save_image(circle, param_dir / f"circle_size_{i+1}.png", normalize=False)
+        save_image(circle, param_dir / f"circle_size_{i + 1}.png", normalize=False)
 
     # Checker size variations
     for i, checker_size in enumerate([8, 16, 32]):
         rng = np.random.default_rng(200 + i)
         gen = CircleCheckerGenerator(
-            name="circle_checker", min_radius=0.15, max_radius=0.2, checker_size=checker_size
+            name="circle_checker",
+            min_radius=0.15,
+            max_radius=0.2,
+            checker_size=checker_size,
         )
         checker = gen.generate(grid, rng)
         save_image(
@@ -154,7 +155,7 @@ def generate_parameter_variations(output_dir: Path) -> None:
             max_thickness=max_t,
         )
         ring = gen.generate(grid, rng)
-        save_image(ring, param_dir / f"ring_thickness_{i+1}.png", normalize=False)
+        save_image(ring, param_dir / f"ring_thickness_{i + 1}.png", normalize=False)
 
 
 def generate_complex_field_examples(output_dir: Path) -> None:
@@ -182,9 +183,7 @@ def generate_complex_field_examples(output_dir: Path) -> None:
 
     # Phase-only object with π/2 shift
     rng = np.random.default_rng(42)  # Reset for same shape
-    phase_field = gen.generate_complex(
-        grid, rng, mode="phase", phase_shift=np.pi / 2
-    )
+    phase_field = gen.generate_complex(grid, rng, mode="phase", phase_shift=np.pi / 2)
     phase_amp = np.abs(phase_field)
     phase_phase = np.angle(phase_field)
 

@@ -16,9 +16,9 @@ def inspect_sample(sample_path: Path) -> None:
     """
     data = np.load(sample_path)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Sample: {sample_path.name}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Display field information
     print("Field Data:")
@@ -26,7 +26,9 @@ def inspect_sample(sample_path: Path) -> None:
         if key in data:
             field = data[key]
             print(f"  {key}: shape={field.shape}, dtype={field.dtype}")
-            print(f"    min={field.min():.6f}, max={field.max():.6f}, mean={field.mean():.6f}")
+            print(
+                f"    min={field.min():.6f}, max={field.max():.6f}, mean={field.mean():.6f}"
+            )
 
     # Display metadata
     print("\nMetadata:")
@@ -55,16 +57,16 @@ def inspect_sample(sample_path: Path) -> None:
         if key in data:
             value = data[key]
             if key == "wavelength":
-                print(f"  {key}: {value*1e9:.1f} nm")
+                print(f"  {key}: {value * 1e9:.1f} nm")
             elif key == "propagation_distance":
-                print(f"  {key}: {value*1000:.2f} mm")
+                print(f"  {key}: {value * 1000:.2f} mm")
             elif key == "pixel_pitch":
-                print(f"  {key}: {value*1e6:.2f} μm")
+                print(f"  {key}: {value * 1e6:.2f} μm")
             elif key == "phase_shift":
                 print(f"  {key}: {value:.4f} rad ({np.degrees(value):.2f}°)")
-            elif isinstance(value, (int, np.integer)):
+            elif isinstance(value, int | np.integer):
                 print(f"  {key}: {value}")
-            elif isinstance(value, (float, np.floating)):
+            elif isinstance(value, float | np.floating):
                 print(f"  {key}: {value:.4f}")
             else:
                 print(f"  {key}: {value}")
@@ -86,9 +88,7 @@ def list_samples(dataset_dir: Path, pattern: str = "*_hologram.npz") -> list[Pat
 def main() -> None:
     """Entry point for dataset inspection."""
     parser = argparse.ArgumentParser(description="Inspect holography dataset samples.")
-    parser.add_argument(
-        "dataset_dir", type=Path, help="Path to the dataset directory."
-    )
+    parser.add_argument("dataset_dir", type=Path, help="Path to the dataset directory.")
     parser.add_argument(
         "--sample",
         type=int,
@@ -129,7 +129,7 @@ def main() -> None:
     # Inspect specific sample
     if args.sample < 0 or args.sample >= len(samples):
         print(
-            f"Error: Sample index {args.sample} out of range [0, {len(samples)-1}]."
+            f"Error: Sample index {args.sample} out of range [0, {len(samples) - 1}]."
         )
         return
 

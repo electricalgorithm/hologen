@@ -3,20 +3,21 @@
 
 from __future__ import annotations
 
-import numpy as np
 from pathlib import Path
+
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.gridspec import GridSpec as MPLGridSpec
 
-from hologen.shapes import CircleGenerator
 from hologen.holography.inline import InlineHolographyStrategy
 from hologen.holography.off_axis import OffAxisHolographyStrategy
+from hologen.shapes import CircleGenerator
 from hologen.types import (
     GridSpec,
-    OpticalConfig,
     HolographyConfig,
     HolographyMethod,
     OffAxisCarrier,
+    OpticalConfig,
 )
 
 
@@ -48,9 +49,7 @@ def generate_inline_vs_offaxis_comparison(output_dir: Path) -> None:
     )
     inline_strategy = InlineHolographyStrategy()
     inline_hologram = inline_strategy.create_hologram(object_field, inline_config)
-    inline_reconstruction = inline_strategy.reconstruct(
-        inline_hologram, inline_config
-    )
+    inline_reconstruction = inline_strategy.reconstruct(inline_hologram, inline_config)
 
     # Off-axis holography
     carrier = OffAxisCarrier(frequency_x=1e6, frequency_y=0, gaussian_width=2e5)
@@ -211,9 +210,7 @@ def generate_frequency_domain_visualization(output_dir: Path) -> None:
     )
     axes[1, 1].axis("off")
 
-    plt.suptitle(
-        "Frequency Domain: Inline vs Off-Axis", fontsize=14, fontweight="bold"
-    )
+    plt.suptitle("Frequency Domain: Inline vs Off-Axis", fontsize=14, fontweight="bold")
     plt.tight_layout()
     plt.savefig(
         output_dir / "frequency_domain_comparison.png", dpi=150, bbox_inches="tight"
@@ -242,7 +239,9 @@ def generate_carrier_frequency_effects(output_dir: Path) -> None:
     fig, axes = plt.subplots(2, 3, figsize=(15, 8))
 
     for idx, freq in enumerate(carrier_freqs):
-        carrier = OffAxisCarrier(frequency_x=freq, frequency_y=0, gaussian_width=freq * 0.2)
+        carrier = OffAxisCarrier(
+            frequency_x=freq, frequency_y=0, gaussian_width=freq * 0.2
+        )
         config = HolographyConfig(
             grid=grid, optics=optics, method=HolographyMethod.OFF_AXIS, carrier=carrier
         )
