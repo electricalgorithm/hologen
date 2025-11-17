@@ -5,6 +5,7 @@ from .converters import (
     ObjectDomainProducer,
     ObjectToHologramConverter,
 )
+from .phase import PhaseGenerationConfig
 from .shapes import CircleGenerator, RectangleGenerator, RingGenerator
 from .types import (
     GridSpec,
@@ -26,6 +27,8 @@ __all__ = [
     "HolographyMethod",
     "ObjectSample",
     "HologramSample",
+    # Phase Generation
+    "PhaseGenerationConfig",
     # Converters
     "ObjectDomainProducer",
     "ObjectToHologramConverter",

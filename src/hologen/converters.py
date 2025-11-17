@@ -18,6 +18,7 @@ from hologen.noise import (
     SensorNoiseModel,
     SpeckleNoiseModel,
 )
+from hologen.phase import PhaseGenerationConfig
 from hologen.shapes import available_generators
 from hologen.types import (
     ArrayComplex,
@@ -73,6 +74,8 @@ class ObjectDomainProducer:
         rng: Generator,
         phase_shift: float = 0.0,
         mode: str = "amplitude",
+        wavelength: float = 632.8e-9,
+        phase_config: PhaseGenerationConfig | None = None,
     ) -> ComplexObjectSample:
         """Produce a new complex object-domain sample.
 
@@ -81,13 +84,17 @@ class ObjectDomainProducer:
             rng: Random number generator providing stochastic parameters.
             phase_shift: Phase modulation in radians for phase-only objects.
             mode: Generation mode - "amplitude" or "phase".
+            wavelength: Illumination wavelength in meters (for physics-based phase).
+            phase_config: Optional physics-based phase configuration.
 
         Returns:
             ComplexObjectSample containing the generated complex field.
         """
 
         generator = cast(ObjectShapeGenerator, rng.choice(self.shape_generators))
-        field = generator.generate_complex(grid, rng, phase_shift, mode)
+        field = generator.generate_complex(
+            grid, rng, phase_shift, mode, wavelength, phase_config
+        )
 
         # Determine representation based on mode
         if mode == "amplitude":
@@ -234,6 +241,7 @@ class HologramDatasetGenerator(DatasetGenerator):
         phase_shift: float = 0.0,
         mode: str = "amplitude",
         use_complex: bool = False,
+        phase_config: PhaseGenerationConfig | None = None,
     ) -> Iterable[HologramSample | ComplexHologramSample]:
         """Yield hologram samples as an iterable sequence.
 
@@ -244,16 +252,20 @@ class HologramDatasetGenerator(DatasetGenerator):
             phase_shift: Phase modulation in radians for phase-only objects.
             mode: Generation mode - "amplitude" or "phase".
             use_complex: If True, generate ComplexHologramSample; if False, generate legacy HologramSample.
+            phase_config: Optional physics-based phase configuration.
 
         Yields:
             Sequential hologram samples containing object, hologram, and reconstruction data.
         """
 
+        # Extract wavelength from HolographyConfig
+        wavelength = config.optics.wavelength
+
         for _ in range(count):
             if use_complex:
                 # Generate complex object sample
                 object_sample = self.object_producer.generate_complex(
-                    config.grid, rng, phase_shift, mode
+                    config.grid, rng, phase_shift, mode, wavelength, phase_config
                 )
 
                 # Override representation with output_config
