@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
@@ -22,24 +21,17 @@ from hologen.phase import PhaseGenerationConfig
 from hologen.shapes import available_generators
 from hologen.types import (
     ArrayComplex,
-    ArrayFloat,
     ComplexHologramSample,
     ComplexObjectSample,
     DatasetGenerator,
-    DatasetWriter,
-    FieldRepresentation,
     GridSpec,
-    HologramSample,
     HolographyConfig,
     HolographyMethod,
     HolographyStrategy,
     NoiseConfig,
     NoiseModel,
-    ObjectSample,
     ObjectShapeGenerator,
-    OutputConfig,
 )
-from hologen.utils.math import normalize_image
 
 
 @dataclass(slots=True)
@@ -50,32 +42,13 @@ class ObjectDomainProducer:
         shape_generators: Tuple of shape generator implementations to sample from.
     """
 
-    shape_generators: tuple[ObjectShapeGenerator, ...]
-
-    def generate(self, grid: GridSpec, rng: Generator) -> ObjectSample:
-        """Produce a new object-domain sample.
-
-        Args:
-            grid: Grid specification describing the required output resolution.
-            rng: Random number generator providing stochastic parameters.
-
-        Returns:
-            ObjectSample containing the generated amplitude image.
-        """
-
-        generator = cast(ObjectShapeGenerator, rng.choice(self.shape_generators))
-        pixels = generator.generate(grid, rng)
-        normalized = normalize_image(pixels)
-        return ObjectSample(name=generator.name, pixels=normalized)
+    phase_config: PhaseGenerationConfig
 
     def generate_complex(
         self,
         grid: GridSpec,
         rng: Generator,
-        phase_shift: float = 0.0,
-        mode: str = "amplitude",
         wavelength: float = 632.8e-9,
-        phase_config: PhaseGenerationConfig | None = None,
     ) -> ComplexObjectSample:
         """Produce a new complex object-domain sample.
 
@@ -85,29 +58,18 @@ class ObjectDomainProducer:
             phase_shift: Phase modulation in radians for phase-only objects.
             mode: Generation mode - "amplitude" or "phase".
             wavelength: Illumination wavelength in meters (for physics-based phase).
-            phase_config: Optional physics-based phase configuration.
 
         Returns:
             ComplexObjectSample containing the generated complex field.
         """
-
-        generator = cast(ObjectShapeGenerator, rng.choice(self.shape_generators))
+        generators: tuple[ObjectShapeGenerator, ...] = tuple(available_generators())
+        generator = cast(ObjectShapeGenerator, rng.choice(generators))
         field = generator.generate_complex(
-            grid, rng, phase_shift, mode, wavelength, phase_config
+            grid, rng, self.phase_config, wavelength 
         )
-
-        # Determine representation based on mode
-        if mode == "amplitude":
-            representation = FieldRepresentation.AMPLITUDE
-        elif mode == "phase":
-            representation = FieldRepresentation.PHASE
-        else:
-            representation = FieldRepresentation.COMPLEX
-
         return ComplexObjectSample(
             name=generator.name,
             field=field,
-            representation=representation,
         )
 
 
@@ -121,38 +83,27 @@ class ObjectToHologramConverter:
         output_config: Configuration for output field representations.
     """
 
-    strategy_mapping: dict[HolographyMethod, HolographyStrategy]
+    config: HolographyConfig
     noise_model: NoiseModel | None = None
-    output_config: OutputConfig = field(default_factory=OutputConfig)
 
     def create_hologram(
         self,
-        sample: ObjectSample | ComplexObjectSample,
-        config: HolographyConfig,
+        sample: ComplexObjectSample,
         rng: Generator | None = None,
-    ) -> ArrayFloat | ArrayComplex:
+    ) -> ArrayComplex:
         """Generate a hologram for the provided object sample.
 
         Args:
-            sample: Object-domain sample to transform (legacy ObjectSample or ComplexObjectSample).
-            config: Holography configuration specifying physical parameters.
+            sample: Object-domain sample to transform (ComplexObjectSample).
             rng: Random number generator for noise application (optional for backward compatibility).
 
         Returns:
-            Hologram field (intensity for legacy ObjectSample, complex for ComplexObjectSample).
+            Hologram field.
         """
 
-        strategy = self._resolve_strategy(config.method)
-
-        # Handle legacy ObjectSample by converting to complex field
-        if isinstance(sample, ObjectSample):
-            complex_field = sample.pixels.astype(np.complex128)
-            is_legacy = True
-        else:
-            complex_field = sample.field
-            is_legacy = False
-
-        hologram_field = strategy.create_hologram(complex_field, config)
+        strategy = self._resolve_strategy(self.config.method)
+        complex_field = sample.field
+        hologram_field = strategy.create_hologram(complex_field, self.config)
 
         # Apply noise model to intensity representation while preserving phase
         if self.noise_model is not None and rng is not None:
@@ -161,20 +112,16 @@ class ObjectToHologramConverter:
             phase = np.angle(hologram_field)
 
             # Apply noise to intensity
-            noisy_intensity = self.noise_model.apply(intensity, config, rng)
+            noisy_intensity = self.noise_model.apply(intensity, self.config, rng)
 
             # Reconstruct complex field with noisy amplitude and original phase
             amplitude = np.sqrt(np.maximum(noisy_intensity, 0.0))
             hologram_field = amplitude * np.exp(1j * phase)
-
-        # Return intensity for legacy samples, complex for new samples
-        if is_legacy:
-            return np.abs(hologram_field) ** 2
         return hologram_field
 
     def reconstruct(
-        self, hologram: ArrayFloat | ArrayComplex, config: HolographyConfig
-    ) -> ArrayFloat | ArrayComplex:
+        self, hologram: ArrayComplex, config: HolographyConfig
+    ) -> ArrayComplex:
         """Reconstruct an object-domain field from a hologram.
 
         Args:
@@ -186,22 +133,7 @@ class ObjectToHologramConverter:
         """
 
         strategy = self._resolve_strategy(config.method)
-
-        # Detect if this is legacy intensity data (real-valued)
-        is_legacy = not np.iscomplexobj(hologram)
-
-        if is_legacy:
-            # Convert intensity to complex field (assume amplitude from sqrt)
-            hologram_complex = np.sqrt(np.maximum(hologram, 0.0)).astype(np.complex128)
-        else:
-            hologram_complex = hologram
-
-        reconstruction = strategy.reconstruct(hologram_complex, config)
-
-        # Return amplitude for legacy, complex for new
-        if is_legacy:
-            return np.abs(reconstruction)
-        return reconstruction
+        return strategy.reconstruct(hologram, config)
 
     def _resolve_strategy(self, method: HolographyMethod) -> HolographyStrategy:
         """Resolve a holography strategy for the requested method.
@@ -215,10 +147,13 @@ class ObjectToHologramConverter:
         Raises:
             KeyError: If the strategy mapping does not contain the method.
         """
-
-        if method not in self.strategy_mapping:
+        strategy_mapping: dict[HolographyMethod, HolographyStrategy] = {
+            HolographyMethod.INLINE: InlineHolographyStrategy(),
+            HolographyMethod.OFF_AXIS: OffAxisHolographyStrategy(),
+        }
+        if method not in strategy_mapping:
             raise KeyError(f"Unknown holography method: {method}.")
-        return self.strategy_mapping[method]
+        return strategy_mapping[method]
 
 
 @dataclass(slots=True)
@@ -236,123 +171,46 @@ class HologramDatasetGenerator(DatasetGenerator):
     def generate(
         self,
         count: int,
-        config: HolographyConfig,
         rng: Generator,
-        phase_shift: float = 0.0,
-        mode: str = "amplitude",
-        use_complex: bool = False,
-        phase_config: PhaseGenerationConfig | None = None,
-    ) -> Iterable[HologramSample | ComplexHologramSample]:
+    ) -> Iterable[ComplexHologramSample]:
         """Yield hologram samples as an iterable sequence.
 
         Args:
             count: Number of samples to generate.
-            config: Holography configuration applied to all samples.
             rng: Random number generator used throughout the pipeline.
-            phase_shift: Phase modulation in radians for phase-only objects.
-            mode: Generation mode - "amplitude" or "phase".
-            use_complex: If True, generate ComplexHologramSample; if False, generate legacy HologramSample.
-            phase_config: Optional physics-based phase configuration.
 
         Yields:
             Sequential hologram samples containing object, hologram, and reconstruction data.
         """
 
         # Extract wavelength from HolographyConfig
-        wavelength = config.optics.wavelength
+        wavelength = self.converter.config.optics.wavelength
 
         for _ in range(count):
-            if use_complex:
-                # Generate complex object sample
-                object_sample = self.object_producer.generate_complex(
-                    config.grid, rng, phase_shift, mode, wavelength, phase_config
-                )
+            # Generate complex object sample
+            object_sample = self.object_producer.generate_complex(
+                self.converter.config.grid, rng, wavelength
+            )
 
-                # Override representation with output_config
-                output_config = self.converter.output_config
-                object_sample = ComplexObjectSample(
-                    name=object_sample.name,
-                    field=object_sample.field,
-                    representation=output_config.object_representation,
-                )
+            # Override representation with output_config
+            object_sample = ComplexObjectSample(
+                name=object_sample.name,
+                field=object_sample.field,
+            )
 
-                # Create hologram and reconstruction
-                hologram_field = self.converter.create_hologram(
-                    object_sample, config, rng
-                )
-                reconstruction_field = self.converter.reconstruct(
-                    hologram_field, config
-                )
+            # Create hologram and reconstruction
+            hologram_field = self.converter.create_hologram(
+                object_sample, rng
+            )
+            reconstruction_field = self.converter.reconstruct(
+                hologram_field, self.converter.config
+            )
 
-                yield ComplexHologramSample(
-                    object_sample=object_sample,
-                    hologram_field=hologram_field,
-                    hologram_representation=output_config.hologram_representation,
-                    reconstruction_field=reconstruction_field,
-                    reconstruction_representation=output_config.reconstruction_representation,
-                )
-            else:
-                # Legacy path: generate ObjectSample
-                object_sample = self.object_producer.generate(config.grid, rng)
-                hologram = self.converter.create_hologram(object_sample, config, rng)
-                reconstruction = self.converter.reconstruct(hologram, config)
-
-                yield HologramSample(
-                    object_sample=object_sample,
-                    hologram=hologram,
-                    reconstruction=reconstruction,
-                )
-
-
-def default_object_producer() -> ObjectDomainProducer:
-    """Create the default object domain producer with built-in shapes."""
-
-    generators = tuple(available_generators())
-    return ObjectDomainProducer(shape_generators=generators)
-
-
-def default_converter(
-    noise_model: NoiseModel | None = None,
-) -> ObjectToHologramConverter:
-    """Create the default converter with inline and off-axis strategies."""
-
-    strategies: dict[HolographyMethod, HolographyStrategy] = {
-        HolographyMethod.INLINE: InlineHolographyStrategy(),
-        HolographyMethod.OFF_AXIS: OffAxisHolographyStrategy(),
-    }
-    return ObjectToHologramConverter(
-        strategy_mapping=strategies, noise_model=noise_model
-    )
-
-
-def generate_dataset(
-    count: int,
-    config: HolographyConfig,
-    rng: Generator,
-    writer: DatasetWriter,
-    generator: HologramDatasetGenerator | None = None,
-    output_dir: Path | None = None,
-) -> None:
-    """Generate and persist a holography dataset using the pipeline.
-
-    Args:
-        count: Number of samples to produce.
-        config: Holography configuration applied to all samples.
-        rng: Random number generator used for stochastic steps.
-        writer: Dataset writer responsible for persisting results.
-        generator: Optional pre-configured generator to reuse.
-        output_dir: Optional output directory override for writer.
-    """
-
-    if generator is None:
-        generator = HologramDatasetGenerator(
-            object_producer=default_object_producer(),
-            converter=default_converter(),
-        )
-
-    samples = list(generator.generate(count=count, config=config, rng=rng))
-    target_dir = output_dir if output_dir is not None else Path("dataset")
-    writer.save(samples=samples, output_dir=target_dir)
+            yield ComplexHologramSample(
+                object_sample=object_sample,
+                hologram_field=hologram_field,
+                reconstruction_field=reconstruction_field,
+            )
 
 
 def create_noise_model(config: NoiseConfig) -> NoiseModel | None:

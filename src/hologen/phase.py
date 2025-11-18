@@ -46,7 +46,6 @@ class PhaseGenerationConfig:
     of realistic phase distributions based on physical optics principles.
 
     Args:
-        enabled: Enable physics-based phase generation.
         refractive_index_mode: Mode for generating n(x,y) field.
             Valid options: "uniform", "gaussian_blobs", "perlin_noise".
         thickness_mode: Mode for generating d(x,y) field.
@@ -63,7 +62,6 @@ class PhaseGenerationConfig:
         gradient_magnitude: Magnitude of thickness gradient.
     """
 
-    enabled: bool = False
     refractive_index_mode: str = "uniform"
     thickness_mode: str = "constant"
     ambient_refractive_index: float = 1.0

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+
+from hologen.phase import PhaseGenerator
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -69,19 +71,14 @@ class BaseShapeGenerator(ObjectShapeGenerator):
         self,
         grid: GridSpec,
         rng: Generator,
-        phase_shift: float = 0.0,
-        mode: str = "amplitude",
+        phase_config: PhaseGenerationConfig,
         wavelength: float = 632.8e-9,
-        phase_config: PhaseGenerationConfig | None = None,
     ) -> ArrayComplex:
         """Generate a complex-valued object field.
 
         Args:
             grid: Grid specification describing the desired output resolution.
             rng: Random number generator providing stochastic parameters.
-            phase_shift: Phase modulation in radians for phase-only objects.
-            mode: Generation mode - "amplitude" (shape with zero phase),
-                  "phase" (uniform amplitude with phase modulation).
             wavelength: Illumination wavelength in meters (for physics-based phase).
             phase_config: Optional physics-based phase configuration.
 
@@ -95,44 +92,25 @@ class BaseShapeGenerator(ObjectShapeGenerator):
         # Generate the binary shape mask
         shape_mask = self.generate(grid, rng)
 
-        # Check if physics-based phase is enabled
-        if phase_config is not None and phase_config.enabled:
-            from hologen.phase import PhaseGenerator
+        phase_generator = PhaseGenerator()
 
-            phase_generator = PhaseGenerator()
+        # Generate physics-based phase
+        phase = phase_generator.generate_phase(
+            grid, shape_mask, wavelength, rng, phase_config
+        )
 
-            # Generate physics-based phase
-            phase = phase_generator.generate_phase(
-                grid, shape_mask, wavelength, rng, phase_config
+        # Generate amplitude (potentially correlated)
+        if phase_config.correlation_coefficient != 0.0:
+            # Need to generate n_field for correlation
+            n_generator = phase_generator.refractive_index_generators[
+                phase_config.refractive_index_mode
+            ]
+            n_field = n_generator.generate(grid, shape_mask, rng, phase_config)
+            amplitude = phase_generator.generate_correlated_amplitude(
+                shape_mask, n_field, rng, phase_config
             )
-
-            # Generate amplitude (potentially correlated)
-            if phase_config.correlation_coefficient != 0.0:
-                # Need to generate n_field for correlation
-                n_generator = phase_generator.refractive_index_generators[
-                    phase_config.refractive_index_mode
-                ]
-                n_field = n_generator.generate(grid, shape_mask, rng, phase_config)
-                amplitude = phase_generator.generate_correlated_amplitude(
-                    shape_mask, n_field, rng, phase_config
-                )
-            else:
-                amplitude = shape_mask
         else:
-            # Fall back to simple phase generation (backward compatible)
-            if mode not in ("amplitude", "phase"):
-                raise ValueError(
-                    f"Invalid mode '{mode}'. Valid options are 'amplitude' or 'phase'."
-                )
-
-            if mode == "amplitude":
-                # Amplitude mode: shape modulates amplitude, zero phase everywhere
-                amplitude = shape_mask
-                phase = np.zeros_like(shape_mask)
-            else:  # mode == "phase"
-                # Phase mode: uniform amplitude, shape modulates phase
-                amplitude = np.ones_like(shape_mask)
-                phase = np.where(shape_mask > 0.5, phase_shift, 0.0)
+            amplitude = shape_mask
 
         # Validate phase values are in valid range
         validate_phase_range(phase)

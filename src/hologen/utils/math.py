@@ -56,7 +56,6 @@ def normalize_image(image: ArrayFloat) -> ArrayFloat:
         return np.zeros_like(image, dtype=np.float64)
     normalized = (image - value_min) / (value_max - value_min)
     return normalized.astype(np.float64)
-    return normalized.astype(np.float64)
 
 
 def _convolve_axis(

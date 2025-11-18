@@ -9,10 +9,8 @@ from .phase import PhaseGenerationConfig
 from .shapes import CircleGenerator, RectangleGenerator, RingGenerator
 from .types import (
     GridSpec,
-    HologramSample,
     HolographyConfig,
     HolographyMethod,
-    ObjectSample,
     OffAxisCarrier,
     OpticalConfig,
 )
@@ -25,8 +23,6 @@ __all__ = [
     "OffAxisCarrier",
     "HolographyConfig",
     "HolographyMethod",
-    "ObjectSample",
-    "HologramSample",
     # Phase Generation
     "PhaseGenerationConfig",
     # Converters
