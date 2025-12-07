@@ -1,75 +1,18 @@
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "hologen"
-version = "0.3.0"
-description = "Holography dataset generation toolkit"
+version = "0.2.0"
+description = "A library to generate digital holograms."
 readme = "README.md"
-requires-python = ">=3.13"
 authors = [
-    { name = "Gyokhan Kochmarla", email = "hello@gyokhan.com" },
+    { name = "Gyokhan Kochmarla", email = "hologen@gyokhan.com" }
 ]
-license = { text = "MIT" }
+requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.3,<2.4",
-    "pillow>=12.0,<13.0",
+    "numpy>=2.3.5",
+    "ruff>=0.14.8",
+    "scipy>=1.16.3",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "black>=24.0",
-    "ruff>=0.2",
-    "pytest>=8.0",
-    "pytest-cov>=4.0",
-]
-
-[tool.black]
-target-version = ["py313"]
-line-length = 88
-
-[tool.ruff]
-target-version = "py313"
-line-length = 88
-select = ["E", "F", "I", "UP", "N"]
-ignore = ["E203", "E266", "E501", "B008"]
-
-[tool.ruff.isort]
-known-first-party = ["hologen"]
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--cov=src/hologen",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-fail-under=90",
-]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
-[tool.coverage.run]
-source = ["src/hologen"]
-omit = [
-    "*/tests/*",
-    "*/test_*.py",
-    "*/__pycache__/*",
-]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
-]
+[build-system]
+requires = ["poetry-core>=2,<3"]
+build-backend = "poetry.core.masonry.api"

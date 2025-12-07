@@ -1,42 +1,19 @@
-"""Holography dataset generation toolkit."""
-
-from .converters import (
-    HologramDatasetGenerator,
-    ObjectDomainProducer,
-    ObjectToHologramConverter,
+from .inline_simulator import InlineHologramSimulator
+from .dataset import (
+    DatasetConfig,
+    DatasetGenerator,
+    HologramConfig,
+    NoiseConfig,
 )
-from .phase import PhaseGenerationConfig
-from .shapes import CircleGenerator, RectangleGenerator, RingGenerator
-from .types import (
-    GridSpec,
-    HologramSample,
-    HolographyConfig,
-    HolographyMethod,
-    ObjectSample,
-    OffAxisCarrier,
-    OpticalConfig,
-)
-from .utils.io import NumpyDatasetWriter
+from .utils import RandomNumberGenerator
+from . import objects as Objects
 
 __all__ = [
-    # Types
-    "GridSpec",
-    "OpticalConfig",
-    "OffAxisCarrier",
-    "HolographyConfig",
-    "HolographyMethod",
-    "ObjectSample",
-    "HologramSample",
-    # Phase Generation
-    "PhaseGenerationConfig",
-    # Converters
-    "ObjectDomainProducer",
-    "ObjectToHologramConverter",
-    "HologramDatasetGenerator",
-    # Shapes
-    "CircleGenerator",
-    "RectangleGenerator",
-    "RingGenerator",
-    # IO
-    "NumpyDatasetWriter",
+    "InlineHologramSimulator",
+    "DatasetGenerator",
+    "DatasetConfig",
+    "HologramConfig",
+    "NoiseConfig",
+    "RandomNumberGenerator",
+    "Objects",
 ]
