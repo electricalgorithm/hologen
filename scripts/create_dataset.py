@@ -15,7 +15,7 @@ from hologen import DatasetConfig, DatasetGenerator, HologramConfig, NoiseConfig
 
 # Dataset Configurations
 BATCH_SIZE = 250
-NUM_SAMPLES = 1500
+NUM_SAMPLES = 3125  # 25000 / 8 = 3125
 
 # Noise Configurations
 SPECKLE_STRENGTH = 0.15
@@ -27,7 +27,7 @@ DARK_NOISE_MEAN = 20.0
 def main():
     # Create hologram configuration
     holo_config = HologramConfig(
-        resolution=512,
+        resolution=224,
         pixel_size=4.65,  # microns
         wavelength=0.532,  # microns
         z_distance=20000,  # microns
@@ -37,8 +37,8 @@ def main():
 
     # Create dataset configuration
     config = DatasetConfig(
-        output_dir="inline-holo-dataset-v2",
-        base_seed=42,
+        output_dir="dataset-224",
+        base_seed=10000,
         hologram_config=holo_config,
     )
 
@@ -142,7 +142,7 @@ def main():
     # Generate the dataset
     stats = generator.generate()
 
-    print(f"\nGeneration complete!")
+    print("Generation complete!")
     print(f"Total samples: {stats['total_samples']}")
     print(f"Configurations: {stats['configurations']}")
     print(f"Output directory: {stats['output_dir']}")
