@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "huggingface_hub",
+# ]
+# ///
 import argparse
 from pathlib import Path
 from huggingface_hub import HfApi
@@ -25,13 +31,12 @@ def main() -> None:
     except Exception as e:
         print(f"Note on repo creation: {e}")
     
-    print(f"Uploading files from {args.dataset_path} to {args.repo_id}...")
+    print(f"Uploading files from {args.dataset_path} to {args.repo_id} using upload_large_folder...")
     try:
-        api.upload_folder(
+        api.upload_large_folder(
             folder_path=args.dataset_path,
             repo_id=args.repo_id,
             repo_type="dataset",
-            path_in_repo=".",
         )
         print("Upload complete! 🚀")
         print(f"View your dataset at: https://huggingface.co/datasets/{args.repo_id}")
