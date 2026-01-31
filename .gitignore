@@ -8,3 +8,6 @@ htmlcov
 .ruff_cache
 .kiro
 .cursor
+*/dataset_examples.png
+*.parquet
+*/.cache
