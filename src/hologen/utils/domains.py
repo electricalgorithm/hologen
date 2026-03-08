@@ -1,6 +1,7 @@
 """
 This module exposes the domain operations for easy-to-use.
 """
+
 import numpy
 import dataclasses
 

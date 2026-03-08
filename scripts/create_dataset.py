@@ -11,6 +11,7 @@
 This script creates a dataset of inline holograms.
 
 """
+
 from hologen import DatasetConfig, DatasetGenerator, HologramConfig, NoiseConfig
 
 # Dataset Configurations

@@ -1,9 +1,9 @@
 """
 This module exposes the mathmetical operations for easy-to-use.
 """
+
 import numpy
 import math
-import enum
 
 from .domains import FrequencyGrid, create_frequency_grid
 
@@ -31,6 +31,7 @@ def get_zernike_polynomial(rho: numpy.ndarray, theta: numpy.ndarray, m, n):
         z[mask] = r[mask] * numpy.sin(-m * theta[mask])
     return z
 
+
 def get_angular_spectrum_transfer_function(
     resolution: int,
     pixel_size: float,
@@ -39,7 +40,9 @@ def get_angular_spectrum_transfer_function(
     is_forward: bool,
 ) -> numpy.ndarray:
     grid: FrequencyGrid = create_frequency_grid(resolution, pixel_size)
-    sq_arg: numpy.ndarray = 1 - (wavelength * grid.FX) ** 2 - (wavelength * grid.FY) ** 2
+    sq_arg: numpy.ndarray = (
+        1 - (wavelength * grid.FX) ** 2 - (wavelength * grid.FY) ** 2
+    )
     sq_arg: numpy.ndarray = numpy.maximum(sq_arg, 0)
     root: numpy.ndarray = numpy.sqrt(sq_arg)
 

@@ -1,6 +1,7 @@
 import dataclasses
 import pathlib
 
+
 @dataclasses.dataclass
 class NoiseConfig:
     """Configuration for noise parameters in hologram generation."""
@@ -19,16 +20,24 @@ class NoiseConfig:
         # Check the conditions.
         if self.speckle and not (self.speckle_roughness or self.speckle_strength):
             raise ValueError("If speckle is enabled, its properties must be provided.")
-        elif self.speckle and (self.speckle_strength < 0 or self.speckle_roughness <= 0):
-            raise ValueError("speckle_strength must be non-negative or speckle_roughness must be positive.")
+        elif self.speckle and (
+            self.speckle_strength < 0 or self.speckle_roughness <= 0
+        ):
+            raise ValueError(
+                "speckle_strength must be non-negative or speckle_roughness must be positive."
+            )
 
         if self.read and not self.read_noise_sigma:
-            raise ValueError("If read noise is enabled, its properties must be provided.")
+            raise ValueError(
+                "If read noise is enabled, its properties must be provided."
+            )
         elif self.read and self.read_noise_sigma < 0:
             raise ValueError("read_noise_sigma must be non-negative.")
 
         if self.dark and not self.dark_noise_mean:
-            raise ValueError("If dark current noise is enabled, its properties must be provided.")
+            raise ValueError(
+                "If dark current noise is enabled, its properties must be provided."
+            )
         elif self.dark and self.dark_noise_mean < 0:
             raise ValueError("dark_noise_mean must be non-negative.")
 
@@ -37,7 +46,7 @@ class NoiseConfig:
 class HologramConfig:
     """Configuration for hologram generation parameters."""
 
-    resolution: int    # pixels
+    resolution: int  # pixels
     pixel_size: float  # microns
     wavelength: float  # microns
     z_distance: float  # microns

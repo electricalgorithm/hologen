@@ -1,6 +1,7 @@
 """
 This module provides a function for generating read noise.
 """
+
 import numpy
 import hologen.utils as utils
 

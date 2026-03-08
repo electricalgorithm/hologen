@@ -1,6 +1,7 @@
 """
 This module provides speckle noise implementation for object domain.
 """
+
 import numpy
 from scipy.fft import fft2, ifft2
 import hologen.utils as utils
@@ -43,9 +44,7 @@ def add_speckle_noise(
     smooth_phase = ifft2(fft2(random_phase) * kernel).real
 
     # Normalize and apply strength
-    smooth_phase = (smooth_phase - smooth_phase.mean()) / (
-        smooth_phase.std() + 1e-10
-    )
+    smooth_phase = (smooth_phase - smooth_phase.mean()) / (smooth_phase.std() + 1e-10)
     final_phase_screen = smooth_phase * strength
 
     # Multiply the field by this phase screen

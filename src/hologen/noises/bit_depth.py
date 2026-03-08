@@ -1,13 +1,15 @@
 """
 This module provides a function for generating bit depth noise.
 """
+
 import numpy
-import hologen.utils as utils
 
 ALLOWED_BIT_DEPTHS: list[int] = [8, 10, 12]
 
 
-def add_bit_depth_noise(field: numpy.ndarray[float], bit_depth: int) -> numpy.ndarray[float]:
+def add_bit_depth_noise(
+    field: numpy.ndarray[float], bit_depth: int
+) -> numpy.ndarray[float]:
     """Add bit depth noise to a given field."""
     max_val: int = 2**bit_depth - 1
     # Normalize current max to sensor max (saturation)

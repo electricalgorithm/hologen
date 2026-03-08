@@ -1,6 +1,7 @@
 """
 This module provides a function for generating shot noise.
 """
+
 import numpy
 import hologen.utils as utils
 

@@ -5,18 +5,16 @@ This module provides a scalable and flexible API for generating hologram dataset
 with different noise configurations, making it easy for consumers to create
 custom datasets for machine learning or research purposes.
 """
+
 from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
-import pyarrow as pa
 
 from hologen.inline_simulator import InlineHologramSimulator
 from hologen.objects import add_random_cells
-from hologen.utils import save_complex_field_to_parquet, save_intensity_to_parquet
 from hologen.utils import RandomNumberGenerator
 from hologen.propagator import backwards_propagate
 from .configs import DatasetConfig, NoiseConfig
@@ -122,7 +120,9 @@ class DatasetGenerator:
         for config_name, (num_samples, noise_config) in self._configs.items():
             if verbose:
                 noise_desc = self._describe_noise(noise_config)
-                print(f"  Generating {num_samples} samples: {config_name} ({noise_desc})...")
+                print(
+                    f"  Generating {num_samples} samples: {config_name} ({noise_desc})..."
+                )
 
             for i in range(num_samples):
                 # Create simulator with unique seed
@@ -142,11 +142,13 @@ class DatasetGenerator:
                 self._ground_truths.append(ground_truth)
                 self._holograms.append(hologram)
                 self._reconstructed.append(reconstructed)
-                self._metadata.append({
-                    "config_name": config_name,
-                    "sample_idx": i,
-                    "global_idx": global_idx,
-                })
+                self._metadata.append(
+                    {
+                        "config_name": config_name,
+                        "sample_idx": i,
+                        "global_idx": global_idx,
+                    }
+                )
 
                 # Save first example for visualization
                 if i == 0:
@@ -157,7 +159,9 @@ class DatasetGenerator:
                 # Write batch if we've accumulated enough samples
                 if len(self._ground_truths) >= self.batch_size:
                     if verbose:
-                        print(f"  Writing batch of {len(self._ground_truths)} samples...")
+                        print(
+                            f"  Writing batch of {len(self._ground_truths)} samples..."
+                        )
                     self._write_batch()
 
         # Write any remaining samples
@@ -179,7 +183,6 @@ class DatasetGenerator:
             "configurations": len(self._configs),
             "output_dir": str(output_dir.absolute()),
         }
-
 
     def _generate_single_hologram(
         self,
@@ -242,69 +245,81 @@ class DatasetGenerator:
     def _write_batch(self) -> None:
         """
         Write accumulated samples to separate parquet files and clear buffers.
-        
+
         Creates separate parquet files for each batch (e.g., ground_truth_0000.parquet,
         ground_truth_0001.parquet, etc.). This enables true memory-efficient batch writing
         for large datasets without ever loading the full dataset into memory.
         """
         if not self._ground_truths:
             return
-        
+
         output_dir = Path(self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Get array shape from first sample
         shape = self._ground_truths[0].shape
         num_pixels = shape[0] * shape[1]
         batch_size = len(self._ground_truths)
-        
+
         # Generate sample IDs for this batch
         sample_ids = range(self._sample_counter, self._sample_counter + batch_size)
-        
+
         # Calculate batch number for filename
         batch_num = self._sample_counter // self.batch_size
-        
+
         # Ground truth (complex field)
         gt_data = {
             "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat([m["config_name"] for m in self._metadata], num_pixels),
-            "global_idx": np.repeat([m["global_idx"] for m in self._metadata], num_pixels),
+            "config_name": np.repeat(
+                [m["config_name"] for m in self._metadata], num_pixels
+            ),
+            "global_idx": np.repeat(
+                [m["global_idx"] for m in self._metadata], num_pixels
+            ),
             "real": np.concatenate([arr.real.flatten() for arr in self._ground_truths]),
             "imag": np.concatenate([arr.imag.flatten() for arr in self._ground_truths]),
         }
         pd.DataFrame(gt_data).to_parquet(
             output_dir / f"ground_truth_{batch_num:04d}.parquet",
             compression="snappy",
-            index=False
+            index=False,
         )
-        
+
         # Hologram (intensity)
         holo_data = {
             "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat([m["config_name"] for m in self._metadata], num_pixels),
-            "global_idx": np.repeat([m["global_idx"] for m in self._metadata], num_pixels),
+            "config_name": np.repeat(
+                [m["config_name"] for m in self._metadata], num_pixels
+            ),
+            "global_idx": np.repeat(
+                [m["global_idx"] for m in self._metadata], num_pixels
+            ),
             "intensity": np.concatenate([arr.flatten() for arr in self._holograms]),
         }
         pd.DataFrame(holo_data).to_parquet(
             output_dir / f"hologram_{batch_num:04d}.parquet",
             compression="snappy",
-            index=False
+            index=False,
         )
-        
+
         # Reconstructed (complex field)
         rec_data = {
             "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat([m["config_name"] for m in self._metadata], num_pixels),
-            "global_idx": np.repeat([m["global_idx"] for m in self._metadata], num_pixels),
+            "config_name": np.repeat(
+                [m["config_name"] for m in self._metadata], num_pixels
+            ),
+            "global_idx": np.repeat(
+                [m["global_idx"] for m in self._metadata], num_pixels
+            ),
             "real": np.concatenate([arr.real.flatten() for arr in self._reconstructed]),
             "imag": np.concatenate([arr.imag.flatten() for arr in self._reconstructed]),
         }
         pd.DataFrame(rec_data).to_parquet(
             output_dir / f"reconstructed_{batch_num:04d}.parquet",
             compression="snappy",
-            index=False
+            index=False,
         )
-        
+
         # Update counter and clear buffers
         self._sample_counter += batch_size
         self._ground_truths.clear()
@@ -381,7 +396,9 @@ class DatasetGenerator:
             plt.colorbar(im3, ax=axes[row, 2])
 
             # Reconstructed Object (Amplitude)
-            im4 = axes[row, 3].imshow(np.abs(reconstructed), cmap="gray", origin="lower", vmin=0.8, vmax=1.0)
+            im4 = axes[row, 3].imshow(
+                np.abs(reconstructed), cmap="gray", origin="lower", vmin=0.8, vmax=1.0
+            )
             axes[row, 3].set_title(
                 f"{config_name}\nReconstructed Object (Amplitude)\n(Artifacts from zero-phase assumption)"
             )

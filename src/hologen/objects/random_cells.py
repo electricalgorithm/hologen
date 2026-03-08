@@ -1,6 +1,7 @@
 """
 This module implements a function to generate random cells in an field.
 """
+
 from numpy import cos as npCos
 from numpy import sin as npSin
 from numpy import pi as npPi
@@ -9,10 +10,12 @@ from hologen.utils import RandomNumberGenerator
 from hologen.inline_simulator import InlineHologramSimulator
 
 
-def add_random_cells(hologram: InlineHologramSimulator,
-                    num_cells: int = 10,
-                    radius_range: tuple[int, int] = (5, 15),
-                    phase_max: float = 0.5) -> None:
+def add_random_cells(
+    hologram: InlineHologramSimulator,
+    num_cells: int = 10,
+    radius_range: tuple[int, int] = (5, 15),
+    phase_max: float = 0.5,
+) -> None:
     """Generates random cell-like structures."""
     rng: npGenerator = RandomNumberGenerator()
 

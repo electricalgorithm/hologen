@@ -5,6 +5,7 @@ This demonstrates how to load and filter samples from the consolidated
 parquet format. The loading process is the same regardless of whether
 the dataset was generated with batch writing or all at once.
 """
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -22,7 +23,8 @@ print(f"First hologram shape: {holograms[0].shape}")
 
 # Example 2: Filter by configuration using pandas
 # Load all parquet files for this data type
-from glob import glob
+from glob import glob  # noqa: E402
+
 parquet_files = sorted(glob(str(dataset_dir / "hologram_*.parquet")))
 dfs = [pd.read_parquet(f) for f in parquet_files]
 df = pd.concat(dfs, ignore_index=True)
@@ -51,10 +53,19 @@ real = sample_data["real"].values
 imag = sample_data["imag"].values
 complex_field = (real + 1j * imag).reshape(resolution, resolution)
 print(f"\nGround truth complex field shape: {complex_field.shape}")
-print(f"Amplitude range: [{np.abs(complex_field).min():.3f}, {np.abs(complex_field).max():.3f}]")
+print(
+    f"Amplitude range: [{np.abs(complex_field).min():.3f}, {np.abs(complex_field).max():.3f}]"
+)
+
 
 # Example 4: Batch loading for ML training
-def create_dataloader(dataset_dir: Path, data_type: str, config_name: str, resolution: int, batch_size: int = 32):
+def create_dataloader(
+    dataset_dir: Path,
+    data_type: str,
+    config_name: str,
+    resolution: int,
+    batch_size: int = 32,
+):
     """Create batches of samples for training."""
     # Load all parquet files for this data type
     parquet_files = sorted(glob(str(dataset_dir / f"{data_type}_*.parquet")))
@@ -62,11 +73,11 @@ def create_dataloader(dataset_dir: Path, data_type: str, config_name: str, resol
     df = pd.concat(dfs, ignore_index=True)
     filtered = df[df["config_name"] == config_name]
     sample_ids = filtered["sample_id"].unique()
-    
+
     for i in range(0, len(sample_ids), batch_size):
-        batch_ids = sample_ids[i:i+batch_size]
+        batch_ids = sample_ids[i : i + batch_size]
         batch_data = filtered[filtered["sample_id"].isin(batch_ids)]
-        
+
         # Reconstruct arrays for each sample in batch
         batch_arrays = []
         for sid in batch_ids:
@@ -78,12 +89,15 @@ def create_dataloader(dataset_dir: Path, data_type: str, config_name: str, resol
                 imag = sample["imag"].values
                 arr = (real + 1j * imag).reshape(resolution, resolution)
             batch_arrays.append(arr)
-        
+
         yield np.stack(batch_arrays)
+
 
 # Use the dataloader
 print("\nBatch loading example:")
-for batch_idx, batch in enumerate(create_dataloader(dataset_dir, "hologram", "no_noise", resolution, batch_size=8)):
+for batch_idx, batch in enumerate(
+    create_dataloader(dataset_dir, "hologram", "no_noise", resolution, batch_size=8)
+):
     print(f"Batch {batch_idx}: shape {batch.shape}")
     if batch_idx >= 2:  # Just show first 3 batches
         break

@@ -23,19 +23,27 @@ class InlineHologramSimulator:
         self._rng: np.random.Generator = utils.RandomNumberGenerator()
 
         # Create coordinate grid (Spatial Domain)
-        coordinate: utils.CoordinateGrid = utils.create_coordinate_grid(self.resolution, self.pixel_size)
+        coordinate: utils.CoordinateGrid = utils.create_coordinate_grid(
+            self.resolution, self.pixel_size
+        )
         self.X, self.Y = coordinate.X, coordinate.Y
 
         # Polar coordinates for aberrations (rho normalized to 1 at edge).
-        polar: utils.PolarGrid = utils.create_polar_grid(self.resolution, self.pixel_size)
+        polar: utils.PolarGrid = utils.create_polar_grid(
+            self.resolution, self.pixel_size
+        )
         self.R, self.Theta, self.Rho_norm = polar.R, polar.Theta, polar.Rho_norm
 
         # Create frequency grid (Fourier Domain)
-        freq: utils.FrequencyGrid = utils.create_frequency_grid(self.resolution, self.pixel_size)
+        freq: utils.FrequencyGrid = utils.create_frequency_grid(
+            self.resolution, self.pixel_size
+        )
         self.FX, self.FY = freq.FX, freq.FY
 
         # Initialize the object field (Complex plane).
-        self.object_field = np.ones((self.resolution, self.resolution), dtype=np.complex128)
+        self.object_field = np.ones(
+            (self.resolution, self.resolution), dtype=np.complex128
+        )
 
     def add_object(self, mask, amplitude=1.0, phase_shift=0.0):
         """Adds an object to the current field based on a boolean mask."""
@@ -44,7 +52,9 @@ class InlineHologramSimulator:
 
     def reset_object_field(self):
         """Resets the object field to a clear, transparent slide."""
-        self.object_field = np.ones((self.resolution, self.resolution), dtype=np.complex128)
+        self.object_field = np.ones(
+            (self.resolution, self.resolution), dtype=np.complex128
+        )
 
     def add_speckle_noise(self, strength=0.5, roughness_scale=1.0):
         """
@@ -57,8 +67,11 @@ class InlineHologramSimulator:
                                      (Smaller = finer grain).
         """
         self.object_field = noises.add_speckle_noise(
-            self.object_field, self.resolution, 
-            self.pixel_size, strength, roughness_scale
+            self.object_field,
+            self.resolution,
+            self.pixel_size,
+            strength,
+            roughness_scale,
         )
 
     def add_aberrations(self, coeffs):
@@ -101,7 +114,7 @@ class InlineHologramSimulator:
             z_distance,
             self.wavelength,
             self.pixel_size,
-            self.resolution
+            self.resolution,
         )
 
         # Ideal Intensity (Normalized 0-1 usually, but let's assume photon count)
@@ -111,7 +124,9 @@ class InlineHologramSimulator:
 
         # Add noises.
         if dark_noise_mean > 0:
-            holo_intensity = noises.add_dark_current_noise(holo_intensity, dark_noise_mean)
+            holo_intensity = noises.add_dark_current_noise(
+                holo_intensity, dark_noise_mean
+            )
         if shot_noise:
             holo_intensity = noises.add_shot_noise(holo_intensity)
         if read_noise_sigma > 0:
