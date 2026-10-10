@@ -10,21 +10,23 @@ class NoiseConfig:
     shot: bool
     read: bool
     dark: bool
-    speckle_strength: float | None = None
-    speckle_roughness: float | None = None
+    speckle_contrast: float | None = None  # std/mean of the speckle intensity
+    speckle_grain_size: float | None = None  # microns
     read_noise_sigma: float | None = None
     dark_noise_mean: float | None = None
 
     def __post_init__(self):
         """Validate noise configuration."""
         # Check the conditions.
-        if self.speckle and not (self.speckle_roughness or self.speckle_strength):
+        if self.speckle and (
+            self.speckle_contrast is None or self.speckle_grain_size is None
+        ):
             raise ValueError("If speckle is enabled, its properties must be provided.")
-        elif self.speckle and (
-            self.speckle_strength < 0 or self.speckle_roughness <= 0
+        elif self.speckle and not (
+            0 < self.speckle_contrast <= 1 and self.speckle_grain_size > 0
         ):
             raise ValueError(
-                "speckle_strength must be non-negative or speckle_roughness must be positive."
+                "speckle_contrast must be in (0, 1] and speckle_grain_size must be positive."
             )
 
         if self.read and not self.read_noise_sigma:

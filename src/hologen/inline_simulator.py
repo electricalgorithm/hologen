@@ -6,7 +6,9 @@ import hologen.propagator as propagator
 
 
 class InlineHologramSimulator:
-    def __init__(self, resolution=512, pixel_size=0.1, wavelength=0.532):
+    def __init__(
+        self, resolution: int = 512, pixel_size: float = 0.1, wavelength: float = 0.532
+    ) -> None:
         """
         Initialize the simulation environment.
 
@@ -45,36 +47,20 @@ class InlineHologramSimulator:
             (self.resolution, self.resolution), dtype=np.complex128
         )
 
-    def add_object(self, mask, amplitude=1.0, phase_shift=0.0):
+    def add_object(
+        self, mask: np.ndarray, amplitude: float = 1.0, phase_shift: float = 0.0
+    ) -> None:
         """Adds an object to the current field based on a boolean mask."""
         self.object_field[mask] *= amplitude
         self.object_field[mask] *= np.exp(1j * phase_shift)
 
-    def reset_object_field(self):
+    def reset_object_field(self) -> None:
         """Resets the object field to a clear, transparent slide."""
         self.object_field = np.ones(
             (self.resolution, self.resolution), dtype=np.complex128
         )
 
-    def add_speckle_noise(self, strength=0.5, roughness_scale=1.0):
-        """
-        Adds speckle noise by simulating a rough phase background.
-        This simulates passing light through dirty optics or a rough glass slide.
-
-        Args:
-            strength (float): Magnitude of the random phase shifts (0.0 to 2*pi).
-            roughness_scale (float): Scaling factor for the grain size of the speckle.
-                                     (Smaller = finer grain).
-        """
-        self.object_field = noises.add_speckle_noise(
-            self.object_field,
-            self.resolution,
-            self.pixel_size,
-            strength,
-            roughness_scale,
-        )
-
-    def add_aberrations(self, coeffs):
+    def add_aberrations(self, coeffs: dict[tuple[int, int], float]) -> None:
         """
         Adds optical aberrations to the field using Zernike polynomials.
 
@@ -93,17 +79,21 @@ class InlineHologramSimulator:
 
     def generate_hologram(
         self,
-        z_distance,
-        shot_noise=False,
-        dark_noise_mean=0,
-        read_noise_sigma=0,
-        bit_depth=None,
+        z_distance: float,
+        speckle_grain_size: float | None = None,
+        speckle_contrast: float = 0.0,
+        shot_noise: bool = False,
+        dark_noise_mean: float = 0.0,
+        read_noise_sigma: float = 0.0,
+        bit_depth: int | None = None,
     ) -> np.ndarray:
         """
         Simulates the sensor recording with advanced noise models.
 
         Args:
             z_distance (float): Propagation distance.
+            speckle_grain_size (float): Mean speckle grain diameter (in microns).
+            speckle_contrast (float): Speckle contrast std/mean; 0 disables speckle.
             shot_noise (bool): If True, applies Poisson shot noise.
             dark_noise_mean (float): Mean thermal electrons (Poisson dist).
             read_noise_sigma (float): Std dev of Gaussian read noise.
@@ -120,7 +110,17 @@ class InlineHologramSimulator:
         # Ideal Intensity (Normalized 0-1 usually, but let's assume photon count)
         # We assume a baseline photon count for "bright" areas to make Shot Noise meaningful
         base_photon_count = 1000.0
-        holo_intensity = np.abs(complex_field) ** 2 * base_photon_count
+        holo_intensity = np.abs(complex_field) ** 2
+
+        # Speckle modulates the light reaching the sensor, so it acts on the ideal
+        # intensity before photons are counted.
+        if speckle_contrast > 0:
+            if speckle_grain_size is None:
+                raise ValueError("speckle_grain_size is required when speckle is on.")
+            holo_intensity = noises.add_speckle_noise(
+                holo_intensity, self.pixel_size, speckle_grain_size, speckle_contrast
+            )
+        holo_intensity = holo_intensity * base_photon_count
 
         # Add noises.
         if dark_noise_mean > 0:

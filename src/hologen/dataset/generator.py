@@ -33,7 +33,7 @@ class DatasetGenerator:
         >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=holo_config)
         >>> # For large datasets, use smaller batch_size to limit memory usage
         >>> generator = DatasetGenerator(config, batch_size=50)
-        >>> generator.add_config("no_noise", num_samples=10, noise=NoiseConfig(speckle=False, shot=False, read=False, dark=False, speckle_strength=0.15, speckle_roughness=1.0, read_noise_sigma=10.0, dark_noise_mean=20.0))
+        >>> generator.add_config("no_noise", num_samples=10, noise=NoiseConfig(speckle=False, shot=False, read=False, dark=False, speckle_contrast=0.1, speckle_grain_size=20.0, read_noise_sigma=10.0, dark_noise_mean=20.0))
         >>> generator.generate()
     """
 
@@ -208,16 +208,11 @@ class DatasetGenerator:
         # Save ground truth object (before any noise or propagation)
         ground_truth = sim.object_field.copy()
 
-        # Add speckle noise if requested
-        if noise.speckle:
-            sim.add_speckle_noise(
-                strength=noise.speckle_strength,
-                roughness_scale=noise.speckle_roughness,
-            )
-
         # Generate hologram with noise
         hologram_intensity = sim.generate_hologram(
             z_distance=holo_config.z_distance,
+            speckle_grain_size=noise.speckle_grain_size if noise.speckle else None,
+            speckle_contrast=noise.speckle_contrast if noise.speckle else 0.0,
             shot_noise=noise.shot,
             dark_noise_mean=noise.dark_noise_mean if noise.dark else 0.0,
             read_noise_sigma=noise.read_noise_sigma if noise.read else 0.0,

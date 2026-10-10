@@ -26,14 +26,12 @@ def main() -> None:
     # print("Adding Aberrations (Astigmatism & Coma)...")
     # sim.add_aberrations(coeffs={(2, 2): 1.5, (3, 1): 0.5})
 
-    # 3. Add Speckle (Simulating coherence/roughness)
-    # print("Adding Speckle noise...")
-    sim.add_speckle_noise(strength=0.1, roughness_scale=1.0)
-
-    # 4. Generate Hologram with Sensor Noise
+    # 3. Generate Hologram with Speckle and Sensor Noise
     # This simulates a noisy, imperfect real-world camera
     hologram = sim.generate_hologram(
         z_distance=200,
+        speckle_grain_size=5.0,  # microns
+        speckle_contrast=0.1,
         shot_noise=True,  # Quantum noise
         # dark_noise_mean=10,     # Thermal noise
         # read_noise_sigma=5,     # Electronic noise

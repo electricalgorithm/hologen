@@ -19,8 +19,9 @@ BATCH_SIZE = 250
 NUM_SAMPLES = 3125  # 25000 / 8 = 3125
 
 # Noise Configurations
-SPECKLE_STRENGTH = 0.15
-SPECKLE_ROUGHNESS = 1.0
+# TODO(HOLO-001): placeholder values, to be replaced with cited ones.
+SPECKLE_CONTRAST = 0.1  # std/mean of the speckle intensity
+SPECKLE_GRAIN_SIZE = 20.0  # microns
 READ_NOISE_SIGMA = 10.0
 DARK_NOISE_MEAN = 20.0
 
@@ -63,8 +64,8 @@ def main():
             shot=False,
             read=False,
             dark=False,
-            speckle_strength=SPECKLE_STRENGTH,
-            speckle_roughness=SPECKLE_ROUGHNESS,
+            speckle_contrast=SPECKLE_CONTRAST,
+            speckle_grain_size=SPECKLE_GRAIN_SIZE,
         ),
     )
     generator.add_config(
@@ -85,8 +86,8 @@ def main():
             shot=True,
             read=False,
             dark=False,
-            speckle_strength=SPECKLE_STRENGTH,
-            speckle_roughness=SPECKLE_ROUGHNESS,
+            speckle_contrast=SPECKLE_CONTRAST,
+            speckle_grain_size=SPECKLE_GRAIN_SIZE,
         ),
     )
     generator.add_config(
@@ -120,8 +121,8 @@ def main():
             shot=True,
             read=True,
             dark=False,
-            speckle_strength=SPECKLE_STRENGTH,
-            speckle_roughness=SPECKLE_ROUGHNESS,
+            speckle_contrast=SPECKLE_CONTRAST,
+            speckle_grain_size=SPECKLE_GRAIN_SIZE,
             read_noise_sigma=READ_NOISE_SIGMA,
         ),
     )
@@ -133,8 +134,8 @@ def main():
             shot=True,
             read=True,
             dark=True,
-            speckle_strength=SPECKLE_STRENGTH,
-            speckle_roughness=SPECKLE_ROUGHNESS,
+            speckle_contrast=SPECKLE_CONTRAST,
+            speckle_grain_size=SPECKLE_GRAIN_SIZE,
             read_noise_sigma=READ_NOISE_SIGMA,
             dark_noise_mean=DARK_NOISE_MEAN,
         ),
