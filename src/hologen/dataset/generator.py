@@ -33,7 +33,7 @@ class DatasetGenerator:
         >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=holo_config)
         >>> # For large datasets, use smaller batch_size to limit memory usage
         >>> generator = DatasetGenerator(config, batch_size=50)
-        >>> generator.add_config("no_noise", num_samples=10, noise=NoiseConfig(speckle=False, shot=False, read=False, dark=False, speckle_contrast=0.1, speckle_grain_size=20.0, read_noise_sigma=10.0, dark_noise_mean=20.0))
+        >>> generator.add_config("no_noise", num_samples=10, noise=NoiseConfig(speckle=False, shot=False, read=False, dark=False, speckle_contrast=0.12, speckle_grain_size=10.2, read_noise_sigma=10.0, dark_noise_mean=20.0))
         >>> generator.generate()
     """
 

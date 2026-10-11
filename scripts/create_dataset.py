@@ -19,9 +19,15 @@ BATCH_SIZE = 250
 NUM_SAMPLES = 3125  # 25000 / 8 = 3125
 
 # Noise Configurations
-# TODO(HOLO-001): placeholder values, to be replaced with cited ones.
-SPECKLE_CONTRAST = 0.1  # std/mean of the speckle intensity
-SPECKLE_GRAIN_SIZE = 20.0  # microns
+# Speckle contrast (std/mean of the speckle intensity) of a laser-illuminated
+# in-line hologram: 0.12 for a HeNe laser vs 0.014 for an LED (Hughes,
+# arXiv:2006.09296, 2020; order-of-magnitude anchor measured through a fibre
+# bundle). C = sigma / <I> as in Bianco et al., Light Sci. Appl. 7:48 (2018).
+SPECKLE_CONTRAST = 0.12
+# Mean grain size d_s = wavelength * z / D (Goodman, Speckle Phenomena in Optics,
+# 2007) for scatterers at the object plane seen over the sensor field of view:
+# 0.532 um * 20000 um / (224 * 4.65 um) = 10.2 um, about 2.2 pixels.
+SPECKLE_GRAIN_SIZE = 10.2  # microns
 READ_NOISE_SIGMA = 10.0
 DARK_NOISE_MEAN = 20.0
 

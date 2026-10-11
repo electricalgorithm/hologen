@@ -10,6 +10,9 @@ class NoiseConfig:
     shot: bool
     read: bool
     dark: bool
+    # TODO(speckle-interval): accept a (min, max) interval and sample the contrast
+    # per hologram, e.g. between the LED (0.014) and laser (0.12) anchors, so the
+    # model sees the range of coherence found in real setups.
     speckle_contrast: float | None = None  # std/mean of the speckle intensity
     speckle_grain_size: float | None = None  # microns
     read_noise_sigma: float | None = None
