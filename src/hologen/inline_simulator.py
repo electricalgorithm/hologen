@@ -10,7 +10,7 @@ import hologen.propagator as propagator
 DEFAULT_SATURATION_ELECTRONS: float = 11000.0
 
 # Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1).
-# With# speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
+# With speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
 # 4000 e- keeps it below saturation including 3 sigma of shot noise
 # (2.53 * 4000 + 300 = 10.4 ke-): the exposure is as bright as possible without
 # clipping.
@@ -28,7 +28,6 @@ class InlineHologramSimulator:
             resolution (int): Number of pixels (NxN grid).
             pixel_size (float): Physical size of one pixel in microns.
             wavelength (float): Wavelength of the light in microns (e.g., 0.532 for green).
-            seed (int, optional): Seed for the random number generator for reproducibility.
         """
         self.resolution = resolution
         self.pixel_size = pixel_size

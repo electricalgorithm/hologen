@@ -177,7 +177,8 @@ class Recipe:
         """
         Noise of a real recording: the camera always adds shot noise, dark current,
         read noise and quantisation, so they cannot be switched off one by one.
-        Only the light source varies; None is a spatially incoherent source.
+        Only the speckle of the light source varies. The illumination is always
+        coherent (the hologram needs it); None means a speckle-free source.
         """
         speckle: bool = speckle_contrast is not None
         return NoiseConfig(

@@ -11,13 +11,14 @@ import pytest
 
 from hologen import InlineHologramSimulator, NoiseConfig, RandomNumberGenerator
 from hologen.dataset.recipe import default_recipe
+from hologen.noises.bit_depth import adc_gain
 from hologen.objects import add_random_cells
 
 RECIPE = default_recipe()
 CONFIGURATIONS: dict[str, NoiseConfig] = RECIPE.noise_configurations()
 
 # rms deviation from the ideal hologram, in % of the background, as documented in
-# Recipe.noise_configurations().
+# Recipe.noise_configurations() and measured by scripts/measure_dataset.py.
 DOCUMENTED_NOISE: dict[str, float] = {
     "ideal": 0.02,
     "camera": 1.6,
@@ -26,30 +27,44 @@ DOCUMENTED_NOISE: dict[str, float] = {
 }
 
 
-def record(noise: NoiseConfig, seed: int) -> numpy.ndarray:
-    """Record a dataset hologram with a noise configuration, normalised by its mean."""
+CONFIG = RECIPE.hologram_config()
+# The true background in digital numbers: the ADC gain times the exposure.
+BACKGROUND_DN: float = CONFIG.background_electrons * adc_gain(
+    CONFIG.bit_depth, CONFIG.saturation_electrons
+)
+
+
+def simulator(seed: int) -> InlineHologramSimulator:
+    """A simulator with the recipe geometry and the cells of this seed."""
     RandomNumberGenerator.set_seed(seed)
-    sim = InlineHologramSimulator(resolution=224, pixel_size=4.65)
-    add_random_cells(sim, num_cells=5)
-    hologram = sim.generate_hologram(
-        z_distance=20000,
+    sim = InlineHologramSimulator(
+        CONFIG.resolution, CONFIG.pixel_size, CONFIG.wavelength
+    )
+    add_random_cells(sim, num_cells=CONFIG.num_cells)
+    return sim
+
+
+def record(noise: NoiseConfig, seed: int) -> numpy.ndarray:
+    """Record with the recipe's camera, relative to the true background."""
+    hologram = simulator(seed).generate_hologram(
+        z_distance=CONFIG.z_distance,
         speckle_grain_size=noise.speckle_grain_size if noise.speckle else None,
         speckle_contrast=noise.speckle_contrast if noise.speckle else 0.0,
         shot_noise=noise.shot,
         dark_noise_mean=noise.dark_noise_mean if noise.dark else 0.0,
         read_noise_sigma=noise.read_noise_sigma if noise.read else 0.0,
-        bit_depth=12,
+        bit_depth=CONFIG.bit_depth,
+        background_electrons=CONFIG.background_electrons,
+        saturation_electrons=CONFIG.saturation_electrons,
     )
-    return hologram / hologram.mean()
+    return hologram / BACKGROUND_DN
 
 
 def ideal_hologram(seed: int) -> numpy.ndarray:
-    """The noise-free intensity |ASM(O)|^2 of the same sample, normalised."""
-    RandomNumberGenerator.set_seed(seed)
-    sim = InlineHologramSimulator(resolution=224, pixel_size=4.65)
-    add_random_cells(sim, num_cells=5)
-    hologram = sim.generate_hologram(z_distance=20000, background_electrons=1.0)
-    return hologram / hologram.mean()
+    """The noise-free intensity |ASM(O)|^2 of the same sample (background 1)."""
+    return simulator(seed).generate_hologram(
+        z_distance=CONFIG.z_distance, background_electrons=1.0
+    )
 
 
 @pytest.fixture(scope="module")

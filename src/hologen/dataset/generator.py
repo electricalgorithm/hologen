@@ -30,11 +30,11 @@ class DatasetGenerator:
     generation of large datasets.
 
     Usage:
-        >>> holo_config = HologramConfig(resolution=512, pixel_size=4.65, wavelength=0.532, z_distance=20000, bit_depth=12, num_cells=2)
-        >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=holo_config)
+        >>> recipe = default_recipe()
+        >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=recipe.hologram_config())
         >>> # For large datasets, use smaller batch_size to limit memory usage
         >>> generator = DatasetGenerator(config, batch_size=50)
-        >>> generator.add_config("no_noise", num_samples=10, noise=NoiseConfig(speckle=False, shot=False, read=False, dark=False, speckle_contrast=0.12, speckle_grain_size=10.2, read_noise_sigma=10.0, dark_noise_mean=20.0))
+        >>> generator.add_config("camera", num_samples=10, noise=recipe.camera_noise())
         >>> generator.generate()
     """
 
