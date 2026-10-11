@@ -15,6 +15,11 @@ It reports, per noise configuration:
   positive means the estimator underestimates the background
 - brightest pixel: the largest digital number over all holograms, against the
   2^k - 1 full scale
+
+and, for the exposure, the brightest fringe of laser-speckle holograms relative to
+the background (before any camera noise), which sets the largest background
+exposure that keeps the brightest fringe plus 3 sigma of shot noise below the
+saturation capacity.
 """
 
 import argparse
@@ -27,11 +32,16 @@ from hologen.noises.bit_depth import adc_gain
 from hologen.objects import add_random_cells
 
 SEED: int = 50000
+# The exposure limit is measured on the dataset's own first holograms.
+EXPOSURE_SEED: int = 10000
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     parser.add_argument("--holograms", type=int, default=50, help="per configuration")
+    parser.add_argument(
+        "--exposure-holograms", type=int, default=300, help="for the exposure limit"
+    )
     args = parser.parse_args()
 
     recipe = default_recipe()
@@ -94,6 +104,27 @@ def main() -> None:
         f"| all | | {100 * numpy.mean(all_mean):+.2f} "
         f"(s.d. {100 * numpy.std(all_mean):.2f}) | {100 * numpy.mean(all_median):+.2f} "
         f"(s.d. {100 * numpy.std(all_median):.2f}) | |"
+    )
+
+    # Exposure: brightest fringe with laser speckle, in units of the background.
+    peak = 0.0
+    for i in range(args.exposure_holograms):
+        intensity = simulator(EXPOSURE_SEED + i).generate_hologram(
+            config.z_distance,
+            speckle_grain_size=recipe.speckle.grain_size,
+            speckle_contrast=recipe.speckle.laser_contrast,
+            background_electrons=1.0,
+        )
+        peak = max(peak, float(intensity.max()))
+    brightest = peak * config.background_electrons
+    margin = brightest + 3 * numpy.sqrt(brightest)
+    print(
+        f"\nExposure: brightest laser-speckle fringe over {args.exposure_holograms} "
+        f"holograms (seeds {EXPOSURE_SEED}-{EXPOSURE_SEED + args.exposure_holograms - 1})"
+        f" = {peak:.2f} x background; at {config.background_electrons:.0f} e- it "
+        f"reaches {brightest:,.0f} e- + 3 sigma = {margin:,.0f} e- of "
+        f"{config.saturation_electrons:,.0f} e- saturation "
+        f"({'no clipping' if margin < config.saturation_electrons else 'CLIPS'})."
     )
 
 

@@ -10,21 +10,21 @@ import pandas
 import pytest
 
 from hologen import DatasetConfig, DatasetGenerator, InlineHologramSimulator
-from hologen.dataset.recipe import default_recipe, recipe_from_dict
+from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
 from hologen.noises.bit_depth import adc_gain
 from hologen.utils import load_samples_from_parquet
 
 SAMPLES_PER_CONFIGURATION: int = 2
 
 
-def tiny_recipe():
+def tiny_recipe() -> Recipe:
     """The default recipe on a 64 x 64 grid, small enough for a test."""
     return recipe_from_dict(
         {"geometry": {"resolution": 64}, "dataset": {"total_samples": 8}}
     )
 
 
-def generate(recipe, output: pathlib.Path) -> None:
+def generate(recipe: Recipe, output: pathlib.Path) -> None:
     generator = DatasetGenerator(
         DatasetConfig(
             output_dir=output,
@@ -44,10 +44,12 @@ def test_each_configuration_reaches_the_simulator(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The generator passes every noise and camera setting of the recipe on."""
-    calls: list[dict] = []
+    calls: list[dict[str, object]] = []
     original = InlineHologramSimulator.generate_hologram
 
-    def spy(self, *args, **kwargs):
+    def spy(
+        self: InlineHologramSimulator, *args: object, **kwargs: object
+    ) -> numpy.ndarray:
         calls.append(kwargs)
         return original(self, *args, **kwargs)
 
