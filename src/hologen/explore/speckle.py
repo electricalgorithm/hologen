@@ -7,13 +7,12 @@ fluctuations are added. Use the sliders to change the speckle contrast and grain
 size; the same random seed is reused so only the parameters change.
 
 Usage:
-    uv run scripts/interactive/speckle.py                      # simulated hologram
-    uv run scripts/interactive/speckle.py photo.png            # your own image
-    uv run scripts/interactive/speckle.py photo.png --contrast 0.3 --grain-size 30
-    uv run scripts/interactive/speckle.py photo.png --output noisy.png --no-show
+    hologen explore speckle                         # simulated hologram
+    hologen explore speckle photo.png               # your own image
+    hologen explore speckle --contrast 0.3 --grain-size 30
+    hologen explore speckle --save speckle.png      # save, no window
 """
 
-import argparse
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -23,7 +22,12 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.noises import add_speckle_noise
 from hologen.noises.speckle import generate_speckle_pattern
-from common import load_intensity, simulate_intensity
+from hologen.explore.common import (
+    RECIPE,
+    load_intensity,
+    show_or_save,
+    simulate_intensity,
+)
 
 
 def speckled(
@@ -47,32 +51,34 @@ def speckled(
     return pattern, add_speckle_noise(intensity, pixel_size, grain_size, contrast)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("image", nargs="?", type=pathlib.Path, help="input image")
-    parser.add_argument("--contrast", type=float, default=0.3, help="std/mean, (0, 1]")
-    parser.add_argument("--grain-size", type=float, default=30.0, help="microns")
-    parser.add_argument("--pixel-size", type=float, default=4.65, help="microns")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--output", type=pathlib.Path, help="save the noisy image")
-    parser.add_argument("--no-show", action="store_true", help="do not open a window")
-    args = parser.parse_args()
+def run(
+    image: pathlib.Path | None = None,
+    contrast: float = RECIPE.speckle.laser_contrast,
+    grain_size: float = RECIPE.speckle.grain_size,
+    pixel_size: float = RECIPE.geometry.pixel_size,
+    seed: int = 0,
+    save: pathlib.Path | None = None,
+) -> None:
+    """
+    Open the explorer.
 
-    if args.image is None:
-        intensity = simulate_intensity(args.pixel_size, args.seed)
+    Args:
+        image: Image to use as the intensity; a simulated hologram if None.
+        contrast: Speckle contrast std/mean, in (0, 1].
+        grain_size: Mean speckle grain size (in microns).
+        pixel_size: Pixel size (in microns).
+        seed: Random seed; the same seed gives the same noise pattern.
+        save: Save the figure to this file instead of opening a window.
+    """
+
+    if image is None:
+        intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
     else:
-        intensity = load_intensity(args.image)
-        title = args.image.name
+        intensity = load_intensity(image)
+        title = image.name
 
-    pattern, noisy = speckled(
-        intensity, args.pixel_size, args.grain_size, args.contrast, args.seed
-    )
-    if args.output is not None:
-        plt.imsave(args.output, noisy, cmap="gray", vmin=0, vmax=intensity.max())
-        print(f"Saved {args.output}")
-    if args.no_show:
-        return
+    pattern, noisy = speckled(intensity, pixel_size, grain_size, contrast, seed)
 
     # Same grey scale for input and output, so brightness changes are comparable.
     vmax: float = float(intensity.max())
@@ -94,23 +100,23 @@ def main() -> None:
         "Contrast C",
         0.01,
         1.0,
-        valinit=args.contrast,
+        valinit=contrast,
     )
     grain_slider = Slider(
         fig.add_axes((0.15, 0.06, 0.7, 0.03)),
         "Grain size (um)",
-        2 * args.pixel_size,
-        40 * args.pixel_size,
-        valinit=args.grain_size,
+        2 * pixel_size,
+        40 * pixel_size,
+        valinit=grain_size,
     )
 
     def update(_: float) -> None:
         new_pattern, result = speckled(
             intensity,
-            args.pixel_size,
+            pixel_size,
             grain_slider.val,
             contrast_slider.val,
-            args.seed,
+            seed,
         )
         pattern_image.set_data(new_pattern)
         pattern_image.set_clim(0, numpy.percentile(new_pattern, 99.5))
@@ -120,8 +126,4 @@ def main() -> None:
     contrast_slider.on_changed(update)
     grain_slider.on_changed(update)
     update(0.0)
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
+    show_or_save(fig, save)

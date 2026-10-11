@@ -13,12 +13,12 @@ The illumination is assumed to be adjusted so the background always collects the
 same number of photo-electrons, so only the dark electrons change.
 
 Usage:
-    uv run scripts/interactive/dark_current.py                 # simulated hologram
-    uv run scripts/interactive/dark_current.py photo.png       # your own image
-    uv run scripts/interactive/dark_current.py --doubling 6    # faster temperature rise
+    hologen explore dark-current                    # simulated hologram
+    hologen explore dark-current photo.png          # your own image
+    hologen explore dark-current --doubling 6       # faster temperature rise
+    hologen explore dark-current --save dark.png    # save, no window
 """
 
-import argparse
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -28,12 +28,14 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import add_dark_current_noise, add_shot_noise
-from common import (
+from hologen.explore.common import (
     DARK_CURRENT,
     EXPOSURE_TIME,
     READ_NOISE_SIGMA,
+    RECIPE,
     SATURATION_ELECTRONS,
     load_intensity,
+    show_or_save,
     simulate_intensity,
 )
 
@@ -63,26 +65,36 @@ def record(
     return dark_frame, counts / electrons, clipped
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("image", nargs="?", type=pathlib.Path, help="input image")
-    parser.add_argument("--temperature", type=float, default=REFERENCE_TEMPERATURE)
-    parser.add_argument("--exposure", type=float, default=EXPOSURE_TIME, help="seconds")
-    parser.add_argument(
-        "--doubling", type=float, default=9.0, help="T_d: C per doubling (6-9)"
-    )
-    parser.add_argument("--pixel-size", type=float, default=4.65, help="microns")
-    parser.add_argument("--seed", type=int, default=0)
-    args = parser.parse_args()
+def run(
+    image: pathlib.Path | None = None,
+    temperature: float = REFERENCE_TEMPERATURE,
+    exposure: float = EXPOSURE_TIME,
+    doubling: float = 9.0,
+    pixel_size: float = RECIPE.geometry.pixel_size,
+    seed: int = 0,
+    save: pathlib.Path | None = None,
+) -> None:
+    """
+    Open the explorer.
+
+    Args:
+        image: Image to use as the intensity; a simulated hologram if None.
+        temperature: Sensor temperature (in C).
+        exposure: Exposure time (in seconds).
+        doubling: Temperature step that doubles the dark current (in C).
+        pixel_size: Pixel size (in microns).
+        seed: Random seed; the same seed gives the same noise pattern.
+        save: Save the figure to this file instead of opening a window.
+    """
 
     electrons: float = DEFAULT_BACKGROUND_ELECTRONS
-    if args.image is None:
-        intensity = simulate_intensity(args.pixel_size, args.seed)
+    if image is None:
+        intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
     else:
-        intensity = load_intensity(args.image)
+        intensity = load_intensity(image)
         intensity = intensity / intensity.max()
-        title = args.image.name
+        title = image.name
     vmin, vmax = float(intensity.min()), float(intensity.max())
 
     fig = plt.figure(figsize=(16, 6.5))
@@ -126,22 +138,22 @@ def main() -> None:
         "Temperature (C)",
         0.0,
         70.0,
-        valinit=args.temperature,
+        valinit=temperature,
     )
     exposure_slider = Slider(
         fig.add_axes((0.15, 0.05, 0.7, 0.03)),
         "log10(exposure / s)",
         -3.0,
         1.5,
-        valinit=numpy.log10(args.exposure),
+        valinit=numpy.log10(exposure),
     )
 
     def update(_: float) -> None:
         temperature = temperature_slider.val
         exposure = 10**exposure_slider.val
-        rate = dark_current_rate(temperature, args.doubling)
+        rate = dark_current_rate(temperature, doubling)
         dark_mean = rate * exposure
-        dark_frame, result, clipped = record(intensity, electrons, dark_mean, args.seed)
+        dark_frame, result, clipped = record(intensity, electrons, dark_mean, seed)
 
         dark_image.set_data(dark_frame)
         dark_image.set_clim(0, max(float(dark_frame.max()), 1.0))
@@ -169,7 +181,7 @@ def main() -> None:
             text.set_position((text.get_position()[0], max(value, 0.1) * 1.15))
             text.set_text(f"{value:,.1f}")
         ax_budget.set_title(
-            f"Noise budget at {temperature:.0f} C (T_d = {args.doubling:g} C)\n"
+            f"Noise budget at {temperature:.0f} C (T_d = {doubling:g} C)\n"
             f"dataset: {REFERENCE_TEMPERATURE:.0f} C, {EXPOSURE_TIME * 1000:.1f} ms"
         )
         fig.canvas.draw_idle()
@@ -177,8 +189,4 @@ def main() -> None:
     temperature_slider.on_changed(update)
     exposure_slider.on_changed(update)
     update(0.0)
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
+    show_or_save(fig, save)

@@ -15,63 +15,60 @@ The HoloGen toolkit generates paired object-domain images and their inline or of
 * Realistic noise and aberration modeling for physically accurate simulations
 
 ## Quickstart
-1. Create a virtual environment and install the package:
+Install the package and its `hologen` command:
 
 ```sh
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   pip install -e .
+uv tool install .            # or: pip install .
 ```
 
-2. Generate a sample dataset:
+Generate the dataset with the default, cited recipe (25,000 holograms of 224 x 224
+pixels in four noise configurations):
 
-```bash
-   python scripts/generate_dataset.py
+```sh
+hologen generate --output dataset-224
 ```
 
-The default dataset is written to the ``dataset/`` directory with both ``.npz`` tensors and PNG previews.
+Common options override the recipe; run `hologen generate --help` for all of them:
 
-## Configuration
-Key parameters reside in ``scripts/generate_dataset.py``. Adjust them to change:
-
-* Grid resolution and pixel pitch
-* Optical wavelength and propagation distance
-* Holography method (inline or off-axis)
-* Carrier parameters for off-axis holography
-* Noise levels and aberration coefficients (see [docs](docs/NOISE_SIMULATION.md))
-
-## Complex Field Support
-HoloGen supports complex-valued optical fields with amplitude, phase, and mixed representations. Generate phase-only objects (transparent samples), amplitude-only objects (absorbing samples), or full complex fields. Export data as intensity, amplitude, phase, or complex representations. See [docs/COMPLEX_FIELDS.md](docs/COMPLEX_FIELDS.md) for detailed documentation.
-
-#### Quick Example: Phase-Only Objects
-```bash
-python scripts/generate_dataset.py \
-    --samples 100 \
-    --object-type phase \
-    --output-domain complex \
-    --phase-shift 1.5708
+```sh
+hologen generate --output small --samples 1000 --resolution 128 --seed 1
+hologen generate --output laser --config ideal --config camera_laser_speckle
 ```
 
-## Noise Simulation & Realistic Modeling
-HoloGen includes comprehensive noise and aberration modeling to bridge the gap between synthetic and experimental holography. See [docs/NOISE_SIMULATION.md](docs/NOISE_SIMULATION.md) for detailed parameter explanations.
+The folder also receives `recipe.toml`, the exact recipe the dataset was made from.
 
-#### Basic Noise Configuration
-```py
-python scripts/generate_dataset.py \
-    --samples 100 \
-    --output ./dataset_noisy \
-    --method inline \
-    --height 512 \
-    --width 512 \
-    --pixel-pitch 6.4e-6 \
-    --wavelength 532e-9 \
-    --distance 0.05 \
-    --speckle-contrast 0.8 \
-    --sensor-read-noise 3.0 \
-    --sensor-shot-noise \
-    --sensor-dark-current 0.5 \
-    --sensor-bit-depth 12
+## Recipes
+Every physical value (geometry, camera, speckle) is part of a recipe. Write the
+default recipe, with the unit and source of each value, edit it and generate from it:
+
+```sh
+hologen recipe --output paper.toml
+hologen generate --recipe paper.toml --output dataset-paper
+```
+
+Values missing from a recipe file keep their defaults, and unknown keys are rejected.
+From Python, use `hologen.dataset.default_recipe()` and `load_recipe(path)`.
+
+## Noise Model
+Every recording passes through a model of a real camera (Sony ICX267 CCD, EMVA 1288):
+shot noise, dark current, read noise and a 12-bit ADC. The light source adds speckle
+(Goodman's model). The dataset has four configurations of equal size:
+
+| Configuration | Noise | rms deviation from the noise-free hologram |
+|---|---|---|
+| `ideal` | none (reference) | 0.02% |
+| `camera` | shot + dark + read + ADC | 1.6% |
+| `camera_led_speckle` | camera + speckle contrast 0.014 | 2.1% |
+| `camera_laser_speckle` | camera + speckle contrast 0.12 | 12.1% |
+
+To see each noise source live, open an interactive explorer:
+
+```sh
+hologen explore speckle          # contrast and grain size
+hologen explore shot-noise       # exposure and saturation
+hologen explore dark-current     # temperature and exposure time
+hologen explore readout          # read noise and ADC bit depth
+hologen explore speckle my_photo.png --save speckle.png
 ```
 
 ## Licensing

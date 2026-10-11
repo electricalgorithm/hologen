@@ -11,13 +11,12 @@ All images are divided by the exposure, so they keep the same brightness and onl
 the noise changes.
 
 Usage:
-    uv run scripts/interactive/shot_noise.py                   # simulated hologram
-    uv run scripts/interactive/shot_noise.py photo.png         # your own image
-    uv run scripts/interactive/shot_noise.py --electrons 200
-    uv run scripts/interactive/shot_noise.py photo.png --output noisy.png --no-show
+    hologen explore shot-noise                      # simulated hologram
+    hologen explore shot-noise photo.png            # your own image
+    hologen explore shot-noise --electrons 200
+    hologen explore shot-noise --save shot.png      # save, no window
 """
 
-import argparse
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -25,9 +24,14 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import add_shot_noise
-from common import SATURATION_ELECTRONS, load_intensity, simulate_intensity
+from hologen.explore.common import (
+    RECIPE,
+    SATURATION_ELECTRONS,
+    load_intensity,
+    show_or_save,
+    simulate_intensity,
+)
 
 
 def record(
@@ -46,37 +50,35 @@ def record(
     return counts / electrons, clipped
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("image", nargs="?", type=pathlib.Path, help="input image")
-    parser.add_argument(
-        "--electrons",
-        type=float,
-        default=DEFAULT_BACKGROUND_ELECTRONS,
-        help="photo-electrons per pixel at the background (default: hologen's)",
-    )
-    parser.add_argument("--pixel-size", type=float, default=4.65, help="microns")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--output", type=pathlib.Path, help="save the noisy image")
-    parser.add_argument("--no-show", action="store_true", help="do not open a window")
-    args = parser.parse_args()
+def run(
+    image: pathlib.Path | None = None,
+    electrons: float = RECIPE.camera.background_electrons,
+    pixel_size: float = RECIPE.geometry.pixel_size,
+    seed: int = 0,
+    save: pathlib.Path | None = None,
+) -> None:
+    """
+    Open the explorer.
 
-    if args.image is None:
-        intensity = simulate_intensity(args.pixel_size, args.seed)
+    Args:
+        image: Image to use as the intensity; a simulated hologram if None.
+        electrons: Photo-electrons per pixel at the background.
+        pixel_size: Pixel size (in microns).
+        seed: Random seed; the same seed gives the same noise pattern.
+        save: Save the figure to this file instead of opening a window.
+    """
+
+    if image is None:
+        intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
     else:
         # For a photo, treat its brightest value as the background illumination.
-        intensity = load_intensity(args.image)
+        intensity = load_intensity(image)
         intensity = intensity / intensity.max()
-        title = args.image.name
+        title = image.name
 
-    noisy, _ = record(intensity, args.electrons, args.seed)
+    noisy, _ = record(intensity, electrons, seed)
     vmin, vmax = float(intensity.min()), float(intensity.max())
-    if args.output is not None:
-        plt.imsave(args.output, noisy, cmap="gray", vmin=vmin, vmax=vmax)
-        print(f"Saved {args.output}")
-    if args.no_show:
-        return
 
     # The profile goes through the row with the strongest fringes.
     row: int = int(numpy.argmax(intensity.std(axis=1)))
@@ -120,12 +122,12 @@ def main() -> None:
         "log10(e- / pixel)",
         1.0,
         numpy.log10(2 * SATURATION_ELECTRONS),
-        valinit=numpy.log10(args.electrons),
+        valinit=numpy.log10(electrons),
     )
 
     def update(_: float) -> None:
         electrons = 10**slider.val
-        result, clipped = record(intensity, electrons, args.seed)
+        result, clipped = record(intensity, electrons, seed)
         noisy_image.set_data(result)
         overlay[..., 3] = clipped * 0.9
         clipped_image.set_data(overlay)
@@ -140,8 +142,4 @@ def main() -> None:
 
     slider.on_changed(update)
     update(0.0)
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
+    show_or_save(fig, save)

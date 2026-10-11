@@ -13,12 +13,12 @@ Shot noise and dark current stay at the dataset's values. Fewer bits mean larger
 DN steps: below about 8 bits the steps become visible as a staircase.
 
 Usage:
-    uv run scripts/interactive/readout.py              # simulated hologram
-    uv run scripts/interactive/readout.py photo.png    # your own image
-    uv run scripts/interactive/readout.py --bits 6 --read-noise 30
+    hologen explore readout                         # simulated hologram
+    hologen explore readout photo.png               # your own image
+    hologen explore readout --bits 6 --read-noise 30
+    hologen explore readout --save readout.png      # save, no window
 """
 
-import argparse
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -26,12 +26,14 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from common import (
+from hologen.explore.common import (
     DARK_CURRENT,
     EXPOSURE_TIME,
     READ_NOISE_SIGMA,
+    RECIPE,
     SATURATION_ELECTRONS,
     load_intensity,
+    show_or_save,
     simulate_intensity,
 )
 from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
@@ -43,7 +45,7 @@ from hologen.noises import (
 )
 from hologen.noises.bit_depth import adc_gain
 
-DATASET_BITS: int = 12
+DATASET_BITS: int = RECIPE.camera.bit_depth
 
 
 def collect(intensity: numpy.ndarray[float], seed: int) -> numpy.ndarray[float]:
@@ -63,23 +65,34 @@ def read_out(
     )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("image", nargs="?", type=pathlib.Path, help="input image")
-    parser.add_argument("--read-noise", type=float, default=READ_NOISE_SIGMA)
-    parser.add_argument("--bits", type=int, default=DATASET_BITS)
-    parser.add_argument("--pixel-size", type=float, default=4.65, help="microns")
-    parser.add_argument("--seed", type=int, default=0)
-    args = parser.parse_args()
+def run(
+    image: pathlib.Path | None = None,
+    read_noise: float = READ_NOISE_SIGMA,
+    bits: int = DATASET_BITS,
+    pixel_size: float = RECIPE.geometry.pixel_size,
+    seed: int = 0,
+    save: pathlib.Path | None = None,
+) -> None:
+    """
+    Open the explorer.
 
-    if args.image is None:
-        intensity = simulate_intensity(args.pixel_size, args.seed)
+    Args:
+        image: Image to use as the intensity; a simulated hologram if None.
+        read_noise: Read noise (in e- rms).
+        bits: ADC bit depth.
+        pixel_size: Pixel size (in microns).
+        seed: Random seed; the same seed gives the same noise pattern.
+        save: Save the figure to this file instead of opening a window.
+    """
+
+    if image is None:
+        intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
     else:
-        intensity = load_intensity(args.image)
+        intensity = load_intensity(image)
         intensity = intensity / intensity.max()
-        title = args.image.name
-    electrons = collect(intensity, args.seed)
+        title = image.name
+    electrons = collect(intensity, seed)
     dark_mean = DARK_CURRENT * EXPOSURE_TIME
 
     # Profile: 60 pixels across the row with the strongest fringes.
@@ -127,14 +140,14 @@ def main() -> None:
         "Read noise (e- rms)",
         0.0,
         60.0,
-        valinit=args.read_noise,
+        valinit=read_noise,
     )
     bits_slider = Slider(
         fig.add_axes((0.15, 0.05, 0.7, 0.03)),
         "ADC bit depth",
         4,
         16,
-        valinit=args.bits,
+        valinit=bits,
         valstep=1,
     )
 
@@ -142,7 +155,7 @@ def main() -> None:
         read_noise = read_slider.val
         bits = int(bits_slider.val)
         gain = adc_gain(bits, SATURATION_ELECTRONS)
-        digital = read_out(electrons, read_noise, bits, args.seed)
+        digital = read_out(electrons, read_noise, bits, seed)
 
         image.set_data(digital)
         image.set_clim(0, 2**bits - 1)
@@ -181,8 +194,4 @@ def main() -> None:
     read_slider.on_changed(update)
     bits_slider.on_changed(update)
     update(0.0)
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
+    show_or_save(fig, save)

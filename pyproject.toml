@@ -14,7 +14,11 @@ dependencies = [
     "pyarrow>=26.0.0",
     "ruff>=0.14.8",
     "scipy>=1.16.3",
+    "typer>=0.27.3",
 ]
+
+[project.scripts]
+hologen = "hologen.cli:app"
 
 [build-system]
 requires = ["poetry-core>=2,<3"]

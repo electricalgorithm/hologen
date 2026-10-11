@@ -1,27 +1,23 @@
 """
-Tests for the noise configurations of the dataset recipe (scripts/create_dataset.py).
+Tests for the noise configurations of the dataset recipe (hologen.dataset.recipe).
 
 Every recording made by a real camera contains shot noise, dark current, read
 noise and quantisation, so only the ideal reference may switch them off, and each
 configuration must add a noise level that is clearly different from the others.
 """
 
-import pathlib
-import sys
-
 import numpy
 import pytest
 
 from hologen import InlineHologramSimulator, NoiseConfig, RandomNumberGenerator
+from hologen.dataset.recipe import default_recipe
 from hologen.objects import add_random_cells
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
-import create_dataset  # noqa: E402
-
-CONFIGURATIONS: dict[str, NoiseConfig] = create_dataset.noise_configurations()
+RECIPE = default_recipe()
+CONFIGURATIONS: dict[str, NoiseConfig] = RECIPE.noise_configurations()
 
 # rms deviation from the ideal hologram, in % of the background, as documented in
-# create_dataset.noise_configurations().
+# Recipe.noise_configurations().
 DOCUMENTED_NOISE: dict[str, float] = {
     "ideal": 0.02,
     "camera": 1.6,
@@ -74,7 +70,9 @@ def test_documented_configurations_are_the_ones_used() -> None:
 
 def test_samples_are_split_equally() -> None:
     """Each configuration gets the same share and no sample is lost to rounding."""
-    assert create_dataset.TOTAL_SAMPLES % len(CONFIGURATIONS) == 0
+    counts = RECIPE.samples_per_configuration()
+    assert set(counts.values()) == {RECIPE.dataset.total_samples // len(CONFIGURATIONS)}
+    assert sum(counts.values()) == RECIPE.dataset.total_samples
 
 
 def test_only_the_ideal_reference_is_noise_free() -> None:
@@ -87,16 +85,16 @@ def test_every_recording_has_the_full_camera(name: str) -> None:
     """A real camera always adds shot, dark and read noise with the cited values."""
     noise = CONFIGURATIONS[name]
     assert noise.shot and noise.dark and noise.read
-    assert noise.read_noise_sigma == create_dataset.READ_NOISE_SIGMA
-    assert noise.dark_noise_mean == create_dataset.DARK_NOISE_MEAN
+    assert noise.read_noise_sigma == RECIPE.camera.read_noise
+    assert noise.dark_noise_mean == RECIPE.camera.dark_electrons
 
 
 @pytest.mark.parametrize(
     ("name", "contrast"),
     [
         ("camera", None),
-        ("camera_led_speckle", create_dataset.SPECKLE_CONTRAST_LED),
-        ("camera_laser_speckle", create_dataset.SPECKLE_CONTRAST_LASER),
+        ("camera_led_speckle", RECIPE.speckle.led_contrast),
+        ("camera_laser_speckle", RECIPE.speckle.laser_contrast),
     ],
 )
 def test_light_source_sets_the_speckle(name: str, contrast: float | None) -> None:
