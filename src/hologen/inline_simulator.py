@@ -75,6 +75,14 @@ class InlineHologramSimulator:
         self.object_field[mask] *= amplitude
         self.object_field[mask] *= np.exp(1j * phase_shift)
 
+    def apply_transmission(self, amplitude: np.ndarray, phase: np.ndarray) -> None:
+        """
+        Multiply the object field by a transmission map amplitude * exp(i phase),
+        e.g. a cell with a continuous thickness profile. Overlapping objects
+        multiply their transmissions, so their phases add.
+        """
+        self.object_field = self.object_field * (amplitude * np.exp(1j * phase))
+
     def reset_object_field(self) -> None:
         """Resets the object field to a clear, transparent slide."""
         self.object_field = np.ones(

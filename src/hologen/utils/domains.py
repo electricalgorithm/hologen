@@ -27,10 +27,11 @@ class FrequencyGrid:
 
 def create_coordinate_grid(resolution: int, pixel_size: float) -> CoordinateGrid:
     """Create a coordinate grid and return it."""
-    length = resolution * pixel_size
-    x_dim = numpy.linspace(-length / 2, length / 2, resolution)
-    y_dim = numpy.linspace(-length / 2, length / 2, resolution)
-    x, y = numpy.meshgrid(x_dim, y_dim)
+    # Pixel centres spaced exactly pixel_size apart, with 0 at index N // 2 as in
+    # the centred frequency grid. numpy.linspace over the full length would space
+    # them length / (N - 1) apart, 0.45% too far at 224 pixels.
+    axis = (numpy.arange(resolution) - resolution // 2) * pixel_size
+    x, y = numpy.meshgrid(axis, axis)
     return CoordinateGrid(X=x, Y=y)
 
 
