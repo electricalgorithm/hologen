@@ -23,31 +23,7 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.noises import add_speckle_noise
 from hologen.noises.speckle import generate_speckle_pattern
-from hologen.objects import add_random_cells
-
-
-def load_intensity(path: pathlib.Path) -> numpy.ndarray[float]:
-    """Load an image as a square grayscale intensity map in [0, 1]."""
-    image: numpy.ndarray = plt.imread(path)
-    if numpy.issubdtype(image.dtype, numpy.integer):
-        image = image / numpy.iinfo(image.dtype).max
-    if image.ndim == 3:
-        # Drop alpha, then convert RGB to luminance (ITU-R BT.709 weights).
-        image = image[..., :3] @ numpy.array([0.2126, 0.7152, 0.0722])
-
-    # The speckle model works on square sensors, so crop the centre square.
-    side: int = min(image.shape)
-    top: int = (image.shape[0] - side) // 2
-    left: int = (image.shape[1] - side) // 2
-    return image[top : top + side, left : left + side].astype(float)
-
-
-def simulate_hologram(pixel_size: float, seed: int) -> numpy.ndarray[float]:
-    """Simulate a clean 224x224 in-line hologram with the dataset geometry."""
-    hologen.RandomNumberGenerator.set_seed(seed)
-    sim = hologen.InlineHologramSimulator(resolution=224, pixel_size=pixel_size)
-    add_random_cells(sim, num_cells=5)
-    return sim.generate_hologram(z_distance=20000)
+from try_common import load_intensity, simulate_intensity
 
 
 def speckled(
@@ -83,7 +59,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.image is None:
-        intensity = simulate_hologram(args.pixel_size, args.seed)
+        intensity = simulate_intensity(args.pixel_size, args.seed)
         title = "Simulated hologram"
     else:
         intensity = load_intensity(args.image)

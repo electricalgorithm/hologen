@@ -217,12 +217,12 @@ class DatasetGenerator:
             dark_noise_mean=noise.dark_noise_mean if noise.dark else 0.0,
             read_noise_sigma=noise.read_noise_sigma if noise.read else 0.0,
             bit_depth=holo_config.bit_depth,
+            background_electrons=holo_config.background_electrons,
         )
 
         # Reconstruct complex field from intensity (realistic back-propagation)
         # In real inline holography, we only have intensity and no phase information
-        base_photon_count = 1000.0
-        amplitude = np.sqrt(hologram_intensity / base_photon_count)
+        amplitude = np.sqrt(hologram_intensity / holo_config.background_electrons)
         phase = np.zeros_like(amplitude)  # Zero phase assumption
         reconstructed_complex_field_hologram = amplitude * np.exp(1j * phase)
 

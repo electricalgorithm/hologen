@@ -28,6 +28,13 @@ SPECKLE_CONTRAST = 0.12
 # 2007) for scatterers at the object plane seen over the sensor field of view:
 # 0.532 um * 20000 um / (224 * 4.65 um) = 10.2 um, about 2.2 pixels.
 SPECKLE_GRAIN_SIZE = 10.2  # microns
+# Photo-electrons per pixel from the background illumination (|U|^2 = 1). The
+# modelled sensor is the Sony ICX267 CCD (4.65 um pixels), saturation capacity
+# 11.0 ke- (Basler EMVA 1288 data overview, scout scA1390-17gm). With speckle the
+# brightest fringe reaches 2.53x the background over 300 holograms, so 4000 e-
+# keeps it below saturation including 3 sigma of shot noise (2.53 * 4000 + 300 =
+# 10.4 ke-), i.e. the exposure is set as bright as possible without clipping.
+BACKGROUND_ELECTRONS = 4000.0
 READ_NOISE_SIGMA = 10.0
 DARK_NOISE_MEAN = 20.0
 
@@ -41,6 +48,7 @@ def main():
         z_distance=20000,  # microns
         bit_depth=12,
         num_cells=5,
+        background_electrons=BACKGROUND_ELECTRONS,
     )
 
     # Create dataset configuration

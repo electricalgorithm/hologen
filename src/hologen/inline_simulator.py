@@ -4,6 +4,15 @@ import hologen.utils as utils
 import hologen.noises as noises
 import hologen.propagator as propagator
 
+# Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1).
+# The modelled sensor is the Sony ICX267 CCD (4.65 um pixels) with a saturation
+# capacity of 11.0 ke- (Basler EMVA 1288 data overview, scout scA1390-17gm). With
+# speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
+# 4000 e- keeps it below saturation including 3 sigma of shot noise
+# (2.53 * 4000 + 300 = 10.4 ke-): the exposure is as bright as possible without
+# clipping.
+DEFAULT_BACKGROUND_ELECTRONS: float = 4000.0
+
 
 class InlineHologramSimulator:
     def __init__(
@@ -86,6 +95,7 @@ class InlineHologramSimulator:
         dark_noise_mean: float = 0.0,
         read_noise_sigma: float = 0.0,
         bit_depth: int | None = None,
+        background_electrons: float = DEFAULT_BACKGROUND_ELECTRONS,
     ) -> np.ndarray:
         """
         Simulates the sensor recording with advanced noise models.
@@ -98,6 +108,8 @@ class InlineHologramSimulator:
             dark_noise_mean (float): Mean thermal electrons (Poisson dist).
             read_noise_sigma (float): Std dev of Gaussian read noise.
             bit_depth (int): If set (e.g., 8, 12), simulates quantization.
+            background_electrons (float): Mean photo-electrons (e-) a pixel
+                collects from the unit-intensity illumination (|U|^2 = 1).
         """
         complex_field = propagator.forwards_propagate(
             self.object_field,
@@ -107,9 +119,6 @@ class InlineHologramSimulator:
             self.resolution,
         )
 
-        # Ideal Intensity (Normalized 0-1 usually, but let's assume photon count)
-        # We assume a baseline photon count for "bright" areas to make Shot Noise meaningful
-        base_photon_count = 1000.0
         holo_intensity = np.abs(complex_field) ** 2
 
         # Speckle modulates the light reaching the sensor, so it acts on the ideal
@@ -120,15 +129,20 @@ class InlineHologramSimulator:
             holo_intensity = noises.add_speckle_noise(
                 holo_intensity, self.pixel_size, speckle_grain_size, speckle_contrast
             )
-        holo_intensity = holo_intensity * base_photon_count
 
-        # Add noises.
+        # Convert the normalised intensity into expected photo-electrons per pixel.
+        holo_intensity = holo_intensity * background_electrons
+
+        # Photo-electrons and dark electrons are independent Poisson processes, so
+        # each is sampled exactly once: shot noise on the signal, then the dark
+        # electrons are added. Sampling shot noise after adding the dark signal
+        # would count the dark noise twice (variance N + 2d instead of N + d).
+        if shot_noise:
+            holo_intensity = noises.add_shot_noise(holo_intensity)
         if dark_noise_mean > 0:
             holo_intensity = noises.add_dark_current_noise(
                 holo_intensity, dark_noise_mean
             )
-        if shot_noise:
-            holo_intensity = noises.add_shot_noise(holo_intensity)
         if read_noise_sigma > 0:
             holo_intensity = noises.add_read_noise(holo_intensity, read_noise_sigma)
         if bit_depth is not None:

@@ -1,6 +1,8 @@
 import dataclasses
 import pathlib
 
+from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
+
 
 @dataclasses.dataclass
 class NoiseConfig:
@@ -57,6 +59,9 @@ class HologramConfig:
     z_distance: float  # microns
     bit_depth: int
     num_cells: int
+    # Mean photo-electrons a pixel collects from the unit-intensity (|U|^2 = 1)
+    # illumination in one exposure.
+    background_electrons: float = DEFAULT_BACKGROUND_ELECTRONS  # e- per pixel
 
 
 @dataclasses.dataclass
