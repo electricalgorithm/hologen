@@ -10,6 +10,10 @@ import numpy
 import hologen
 from hologen.objects import add_random_cells
 
+# Saturation capacity of the modelled Sony ICX267 CCD (Basler EMVA 1288 data
+# overview, scout scA1390-17gm). Pixels collecting more electrons are clipped.
+SATURATION_ELECTRONS: float = 11000.0
+
 
 def load_intensity(path: pathlib.Path) -> numpy.ndarray[float]:
     """Load an image as a square grayscale intensity map in [0, 1]."""

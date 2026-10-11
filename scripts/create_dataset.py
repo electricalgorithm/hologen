@@ -36,7 +36,17 @@ SPECKLE_GRAIN_SIZE = 10.2  # microns
 # 10.4 ke-), i.e. the exposure is set as bright as possible without clipping.
 BACKGROUND_ELECTRONS = 4000.0
 READ_NOISE_SIGMA = 10.0
-DARK_NOISE_MEAN = 20.0
+# Dark electrons per exposure = dark current (e-/s) * exposure time (s) (EMVA 1288
+# Release 4.0 Linear, Sec. 3.1, Eq. 29). The ICX267 dark signal is at most 8 mV
+# against a 380 mV saturation signal at 60 C over 1/15 s (Sony ICX267AL
+# datasheet), i.e. 2.1% of the 11.0 ke- saturation capacity = 232 e- in 1/15 s =
+# 3474 e-/s. The dark current doubles every T_d degrees (EMVA 1288 Sec. 3.2,
+# Eq. 31); T_d = 9 C, the slowest commonly reported doubling for CCDs (6-9 C),
+# is the worst case at 25 C: 3474 * 2^((25 - 60) / 9) = 234 e-/s.
+DARK_CURRENT = 234.0  # e- per pixel per second, at 25 C (worst case)
+# Laser in-line holographic microscopy exposure (Wdowiak et al., arXiv:2508.15419).
+EXPOSURE_TIME = 0.0303  # seconds
+DARK_NOISE_MEAN: float = DARK_CURRENT * EXPOSURE_TIME  # 7.1 e- per pixel per exposure
 
 
 def main():

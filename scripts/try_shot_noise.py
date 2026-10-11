@@ -27,11 +27,7 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import add_shot_noise
-from try_common import load_intensity, simulate_intensity
-
-# Saturation capacity of the modelled Sony ICX267 CCD (Basler EMVA 1288 data
-# overview, scout scA1390-17gm). Pixels collecting more electrons are clipped.
-SATURATION_ELECTRONS: float = 11000.0
+from try_common import SATURATION_ELECTRONS, load_intensity, simulate_intensity
 
 
 def record(

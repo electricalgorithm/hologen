@@ -18,7 +18,7 @@ class NoiseConfig:
     speckle_contrast: float | None = None  # std/mean of the speckle intensity
     speckle_grain_size: float | None = None  # microns
     read_noise_sigma: float | None = None
-    dark_noise_mean: float | None = None
+    dark_noise_mean: float | None = None  # e- per pixel per exposure
 
     def __post_init__(self):
         """Validate noise configuration."""
