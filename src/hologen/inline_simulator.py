@@ -4,10 +4,13 @@ import hologen.utils as utils
 import hologen.noises as noises
 import hologen.propagator as propagator
 
+# Saturation capacity of the modelled sensor, the Sony ICX267 CCD (4.65 um
+# pixels): 11.0 ke- (Basler EMVA 1288 data overview, scout scA1390-17gm; 10.4 ke-
+# in Point Grey's Mono Camera Sensor Review, 2015). The ADC maps it to full scale.
+DEFAULT_SATURATION_ELECTRONS: float = 11000.0
+
 # Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1).
-# The modelled sensor is the Sony ICX267 CCD (4.65 um pixels) with a saturation
-# capacity of 11.0 ke- (Basler EMVA 1288 data overview, scout scA1390-17gm). With
-# speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
+# With# speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
 # 4000 e- keeps it below saturation including 3 sigma of shot noise
 # (2.53 * 4000 + 300 = 10.4 ke-): the exposure is as bright as possible without
 # clipping.
@@ -96,6 +99,7 @@ class InlineHologramSimulator:
         read_noise_sigma: float = 0.0,
         bit_depth: int | None = None,
         background_electrons: float = DEFAULT_BACKGROUND_ELECTRONS,
+        saturation_electrons: float = DEFAULT_SATURATION_ELECTRONS,
     ) -> np.ndarray:
         """
         Simulates the sensor recording with advanced noise models.
@@ -105,11 +109,18 @@ class InlineHologramSimulator:
             speckle_grain_size (float): Mean speckle grain diameter (in microns).
             speckle_contrast (float): Speckle contrast std/mean; 0 disables speckle.
             shot_noise (bool): If True, applies Poisson shot noise.
-            dark_noise_mean (float): Mean thermal electrons (Poisson dist).
-            read_noise_sigma (float): Std dev of Gaussian read noise.
-            bit_depth (int): If set (e.g., 8, 12), simulates quantization.
+            dark_noise_mean (float): Mean dark electrons per pixel per exposure.
+            read_noise_sigma (float): Std dev of Gaussian read noise (in e-).
+            bit_depth (int): If set (e.g., 8, 12), converts electrons to digital
+                numbers with an ADC of this many bits.
             background_electrons (float): Mean photo-electrons (e-) a pixel
                 collects from the unit-intensity illumination (|U|^2 = 1).
+            saturation_electrons (float): Saturation capacity (e-), mapped to the
+                largest digital value by the ADC.
+
+        Returns:
+            np.ndarray: Electrons per pixel, or digital numbers (DN) if bit_depth
+                is set.
         """
         complex_field = propagator.forwards_propagate(
             self.object_field,
@@ -143,9 +154,14 @@ class InlineHologramSimulator:
             holo_intensity = noises.add_dark_current_noise(
                 holo_intensity, dark_noise_mean
             )
+
+        # Readout (EMVA 1288 Eq. 14): read noise in electrons, then the ADC converts
+        # to digital numbers with gain K, clips at 2^k - 1 and rounds.
         if read_noise_sigma > 0:
             holo_intensity = noises.add_read_noise(holo_intensity, read_noise_sigma)
         if bit_depth is not None:
-            holo_intensity = noises.add_bit_depth_noise(holo_intensity, bit_depth)
+            holo_intensity = noises.add_bit_depth_noise(
+                holo_intensity, bit_depth, saturation_electrons
+            )
 
         return holo_intensity

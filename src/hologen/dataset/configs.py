@@ -1,7 +1,10 @@
 import dataclasses
 import pathlib
 
-from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
+from hologen.inline_simulator import (
+    DEFAULT_BACKGROUND_ELECTRONS,
+    DEFAULT_SATURATION_ELECTRONS,
+)
 
 
 @dataclasses.dataclass
@@ -17,7 +20,7 @@ class NoiseConfig:
     # model sees the range of coherence found in real setups.
     speckle_contrast: float | None = None  # std/mean of the speckle intensity
     speckle_grain_size: float | None = None  # microns
-    read_noise_sigma: float | None = None
+    read_noise_sigma: float | None = None  # e- rms
     dark_noise_mean: float | None = None  # e- per pixel per exposure
 
     def __post_init__(self):
@@ -62,6 +65,8 @@ class HologramConfig:
     # Mean photo-electrons a pixel collects from the unit-intensity (|U|^2 = 1)
     # illumination in one exposure.
     background_electrons: float = DEFAULT_BACKGROUND_ELECTRONS  # e- per pixel
+    # Charge at which the ADC output reaches its largest value 2^bit_depth - 1.
+    saturation_electrons: float = DEFAULT_SATURATION_ELECTRONS  # e- per pixel
 
 
 @dataclasses.dataclass

@@ -16,6 +16,7 @@ import pandas as pd
 from hologen.inline_simulator import InlineHologramSimulator
 from hologen.objects import add_random_cells
 from hologen.utils import RandomNumberGenerator
+from hologen.noises.bit_depth import adc_gain
 from hologen.propagator import backwards_propagate
 from .configs import DatasetConfig, NoiseConfig
 
@@ -218,16 +219,21 @@ class DatasetGenerator:
             read_noise_sigma=noise.read_noise_sigma if noise.read else 0.0,
             bit_depth=holo_config.bit_depth,
             background_electrons=holo_config.background_electrons,
+            saturation_electrons=holo_config.saturation_electrons,
         )
 
         # Reconstruct complex field from intensity (realistic back-propagation)
         # In real inline holography, we only have intensity and no phase information
-        amplitude = np.sqrt(hologram_intensity / holo_config.background_electrons)
-        phase = np.zeros_like(amplitude)  # Zero phase assumption
+        # The hologram is in digital numbers; the background is K * background_e.
+        background_dn: float = holo_config.background_electrons * adc_gain(
+            holo_config.bit_depth, holo_config.saturation_electrons
+        )
+        amplitude: np.ndarray = np.sqrt(hologram_intensity / background_dn)
+        phase: np.ndarray = np.zeros_like(amplitude)  # Zero phase assumption
         reconstructed_complex_field_hologram = amplitude * np.exp(1j * phase)
 
         # Back-propagate to object plane
-        reconstructed = backwards_propagate(
+        reconstructed: np.ndarray[np.complex128] = backwards_propagate(
             reconstructed_complex_field_hologram,
             holo_config.z_distance,
             sim.wavelength,

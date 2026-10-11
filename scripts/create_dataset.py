@@ -35,7 +35,10 @@ SPECKLE_GRAIN_SIZE = 10.2  # microns
 # keeps it below saturation including 3 sigma of shot noise (2.53 * 4000 + 300 =
 # 10.4 ke-), i.e. the exposure is set as bright as possible without clipping.
 BACKGROUND_ELECTRONS = 4000.0
-READ_NOISE_SIGMA = 10.0
+# Read noise: temporal dark noise of the ICX267, 10 e- (Basler EMVA 1288 data
+# overview, scout scA1390-17gm); 11.48 e- in an independent EMVA 1288
+# measurement (Point Grey, Mono Camera Sensor Review, 2015, FL3-GE-14S3M-C).
+READ_NOISE_SIGMA = 10.0  # e- rms
 # Dark electrons per exposure = dark current (e-/s) * exposure time (s) (EMVA 1288
 # Release 4.0 Linear, Sec. 3.1, Eq. 29). The ICX267 dark signal is at most 8 mV
 # against a 380 mV saturation signal at 60 C over 1/15 s (Sony ICX267AL
@@ -56,7 +59,7 @@ def main():
         pixel_size=4.65,  # microns
         wavelength=0.532,  # microns
         z_distance=20000,  # microns
-        bit_depth=12,
+        bit_depth=12,  # ICX267 cameras output 12-bit data (scA1390-17gm, FL3-GE-14S3M)
         num_cells=5,
         background_electrons=BACKGROUND_ELECTRONS,
     )

@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy
 
 import hologen
+from hologen.inline_simulator import DEFAULT_SATURATION_ELECTRONS
 from hologen.objects import add_random_cells
 
 # create_dataset.py lives one directory up; make it importable from here only.
@@ -31,9 +32,8 @@ __all__: list[str] = [
     "simulate_intensity",
 ]
 
-# Saturation capacity of the modelled Sony ICX267 CCD (Basler EMVA 1288 data
-# overview, scout scA1390-17gm). Pixels collecting more electrons are clipped.
-SATURATION_ELECTRONS: float = 11000.0
+# Saturation capacity of the modelled sensor; pixels collecting more are clipped.
+SATURATION_ELECTRONS: float = DEFAULT_SATURATION_ELECTRONS
 
 
 def load_intensity(path: pathlib.Path) -> numpy.ndarray[float]:
