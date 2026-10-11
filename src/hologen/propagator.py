@@ -45,6 +45,7 @@ def forwards_propagate(
     wavelength: float,
     pixel_size: float,
     resolution: int,
+    numerical_aperture: float | None = None,
 ) -> numpy.ndarray[numpy.complex128]:
     """
     Propagate a complex field of object plane to hologram plane using Angular Spectrum Method.
@@ -55,6 +56,10 @@ def forwards_propagate(
         wavelength: Wavelength (in microns)
         pixel_size: Pixel size (in microns)
         resolution: Resolution of the grid
+        numerical_aperture: NA of the imaging objective in a magnified setup. Its
+            coherent transfer function passes spatial frequencies up to NA /
+            wavelength (Goodman, Introduction to Fourier Optics, Sec. 6.2). None
+            for a lensless setup without a pupil.
 
     Returns:
         Complex field at hologram plane
@@ -67,5 +72,26 @@ def forwards_propagate(
     )
     # Apply propagation.
     U_z_f = U_f * H
+    if numerical_aperture is not None:
+        U_z_f = U_z_f * objective_pupil(
+            resolution, pixel_size, wavelength, numerical_aperture
+        )
     U_z = ifftshift(ifft2(ifftshift(U_z_f)))
     return U_z
+
+
+def objective_pupil(
+    resolution: int, pixel_size: float, wavelength: float, numerical_aperture: float
+) -> numpy.ndarray[bool]:
+    """
+    Coherent transfer function of an objective: a circular pupil that passes
+    spatial frequencies up to NA / wavelength, on the same centred frequency grid
+    as the angular spectrum transfer function.
+    """
+    if not 0 < numerical_aperture <= 1.5:
+        raise ValueError(
+            f"numerical_aperture must be in (0, 1.5], got {numerical_aperture}."
+        )
+    grid: utils.FrequencyGrid = utils.create_frequency_grid(resolution, pixel_size)
+    cutoff: float = numerical_aperture / wavelength
+    return grid.FX**2 + grid.FY**2 <= cutoff**2

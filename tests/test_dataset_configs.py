@@ -21,8 +21,8 @@ CONFIGURATIONS: dict[str, NoiseConfig] = RECIPE.noise_configurations()
 # Recipe.noise_configurations() and measured by scripts/measure_dataset.py.
 DOCUMENTED_NOISE: dict[str, float] = {
     "ideal": 0.02,
-    "camera": 1.6,
-    "camera_led_speckle": 2.1,
+    "camera": 1.4,
+    "camera_led_speckle": 2.0,
     "camera_laser_speckle": 12.1,
 }
 

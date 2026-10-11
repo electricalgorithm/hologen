@@ -46,9 +46,9 @@ def create_polar_grid(resolution: int, pixel_size: float) -> PolarGrid:
 
 def create_frequency_grid(resolution: int, pixel_size: float) -> FrequencyGrid:
     """Create a frequency grid and return it."""
-    sampling_frequency = 1.0 / pixel_size
-    df = sampling_frequency / resolution
-    fx = numpy.arange(-sampling_frequency / 2, sampling_frequency / 2, df)
-    fy = numpy.arange(-sampling_frequency / 2, sampling_frequency / 2, df)
-    freq_x_dim, freq_y_dim = numpy.meshgrid(fx, fy)
+    # Centred frequency axis with exactly `resolution` samples. numpy.arange with a
+    # float step can return one sample too many through rounding (e.g. 224 pixels
+    # of 0.24 um), so build it from fftfreq instead.
+    freq = numpy.fft.fftshift(numpy.fft.fftfreq(resolution, d=pixel_size))
+    freq_x_dim, freq_y_dim = numpy.meshgrid(freq, freq)
     return FrequencyGrid(FX=freq_x_dim, FY=freq_y_dim)

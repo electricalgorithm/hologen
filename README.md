@@ -50,15 +50,16 @@ Values missing from a recipe file keep their defaults, and unknown keys are reje
 From Python, use `hologen.dataset.default_recipe()` and `load_recipe(path)`.
 
 ## Noise Model
-Every recording passes through a model of a real camera (Sony ICX267 CCD, EMVA 1288):
+Every recording passes through a model of a real camera (Sony IMX183 CMOS behind a 10x/0.45
+objective, EMVA 1288):
 shot noise, dark current, read noise and a 12-bit ADC. The light source adds speckle
 (Goodman's model). The dataset has four configurations of equal size:
 
 | Configuration | Noise | rms deviation from the noise-free hologram |
 |---|---|---|
 | `ideal` | none (reference) | 0.02% |
-| `camera` | shot + dark + read + ADC | 1.6% |
-| `camera_led_speckle` | camera + speckle contrast 0.014 | 2.1% |
+| `camera` | shot + dark + read + ADC | 1.4% |
+| `camera_led_speckle` | camera + speckle contrast 0.014 | 2.0% |
 | `camera_laser_speckle` | camera + speckle contrast 0.12 | 12.1% |
 
 To see each noise source live, open an interactive explorer:

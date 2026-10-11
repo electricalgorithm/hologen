@@ -4,34 +4,44 @@ import hologen.utils as utils
 import hologen.noises as noises
 import hologen.propagator as propagator
 
-# Saturation capacity of the modelled sensor, the Sony ICX267 CCD (4.65 um
-# pixels): 11.0 ke- (Basler EMVA 1288 data overview, scout scA1390-17gm; 10.4 ke-
-# in Point Grey's Mono Camera Sensor Review, 2015). The ADC maps it to full scale.
-DEFAULT_SATURATION_ELECTRONS: float = 11000.0
+# Saturation capacity of the modelled sensor, the Sony IMX183 CMOS (2.4 um pixels)
+# of the magnified in-line setup of Wdowiak et al., arXiv:2508.15419 (2025):
+# 14,837 e- (FLIR BFS-U3-200S6M EMVA 1288 results, 20 C; 14,775 e- for LUCID
+# Triton 20 MP). The ADC maps it to full scale.
+DEFAULT_SATURATION_ELECTRONS: float = 14837.0
 
-# Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1).
-# With speckle the brightest fringe reaches 2.53x the background over 300 holograms, so
-# 4000 e- keeps it below saturation including 3 sigma of shot noise
-# (2.53 * 4000 + 300 = 10.4 ke-): the exposure is as bright as possible without
-# clipping.
-DEFAULT_BACKGROUND_ELECTRONS: float = 4000.0
+# Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1):
+# the largest background for which the brightest fringe (peak x background) plus
+# 3 sigma of shot noise stays below saturation. PROVISIONAL: the first-version
+# ellipses in the magnified geometry peak at 2.66x the background
+# (scripts/measure_dataset.py), so 2.66 * 5400 + 3 sqrt(2.66 * 5400) = 14.5 ke-;
+# re-derive once the HOLO-002 cell objects exist.
+DEFAULT_BACKGROUND_ELECTRONS: float = 5400.0
 
 
 class InlineHologramSimulator:
     def __init__(
-        self, resolution: int = 512, pixel_size: float = 0.1, wavelength: float = 0.532
+        self,
+        resolution: int = 512,
+        pixel_size: float = 0.1,
+        wavelength: float = 0.532,
+        numerical_aperture: float | None = None,
     ) -> None:
         """
         Initialize the simulation environment.
 
         Args:
             resolution (int): Number of pixels (NxN grid).
-            pixel_size (float): Physical size of one pixel in microns.
+            pixel_size (float): Physical size of one pixel in microns, in the object
+                plane (sensor pixel divided by the magnification when magnified).
             wavelength (float): Wavelength of the light in microns (e.g., 0.532 for green).
+            numerical_aperture (float | None): NA of the imaging objective of a
+                magnified setup; None for a lensless setup without a pupil.
         """
         self.resolution = resolution
         self.pixel_size = pixel_size
         self.wavelength = wavelength
+        self.numerical_aperture = numerical_aperture
 
         self._rng: np.random.Generator = utils.RandomNumberGenerator()
 
@@ -127,6 +137,7 @@ class InlineHologramSimulator:
             self.wavelength,
             self.pixel_size,
             self.resolution,
+            numerical_aperture=self.numerical_aperture,
         )
 
         holo_intensity = np.abs(complex_field) ** 2

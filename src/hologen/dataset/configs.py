@@ -67,6 +67,8 @@ class HologramConfig:
     background_electrons: float = DEFAULT_BACKGROUND_ELECTRONS  # e- per pixel
     # Charge at which the ADC output reaches its largest value 2^bit_depth - 1.
     saturation_electrons: float = DEFAULT_SATURATION_ELECTRONS  # e- per pixel
+    # NA of the imaging objective of a magnified setup; None for a lensless one.
+    numerical_aperture: float | None = None
 
 
 @dataclasses.dataclass

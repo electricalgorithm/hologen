@@ -33,53 +33,80 @@ def _value(default: Any, unit: str, source: str) -> Any:
 
 @dataclasses.dataclass
 class Geometry:
-    """Optical geometry of the in-line setup and the simulated objects."""
+    """
+    Magnified in-line (Gabor) holographic microscope of Wdowiak et al.,
+    arXiv:2508.15419 (2025): a defocused detector behind a microscope objective.
+    Distances and pixel sizes are given in the object plane.
+    """
 
-    resolution: int = _value(224, "pixels", "Sensor crop used by HoloPASWIN")
-    pixel_size: float = _value(4.65, "um", "Pixel pitch of the Sony ICX267 CCD")
-    wavelength: float = _value(0.532, "um", "Green laser")
-    z_distance: float = _value(20000.0, "um", "Object-to-sensor distance")
+    resolution: int = _value(
+        224, "pixels", "Image size; decided after the HOLO-002 pilot"
+    )
+    sensor_pixel_size: float = _value(
+        2.4,
+        "um",
+        "Sony IMX183 pixel pitch; Wdowiak et al. 2025 report 2.4 um pixels "
+        "(5496 x 3672, model not named)",
+    )
+    magnification: float = _value(
+        10.0,
+        "",
+        "10x objective with a 200 mm tube lens, Wdowiak et al. 2025 (assumes an "
+        "objective designed for a 200 mm tube)",
+    )
+    numerical_aperture: float = _value(
+        0.45, "", "Collecting objective NA, Wdowiak et al. 2025"
+    )
+    wavelength: float = _value(
+        0.532, "um", "Single-mode DPSS laser, Wdowiak et al. 2025"
+    )
+    z_distance: float = _value(
+        20.0,
+        "um",
+        "Object-space defocus: 2 mm detector defocus in Wdowiak et al. 2025 "
+        "divided by the axial magnification M^2 = 100",
+    )
     num_cells: int = _value(5, "objects per hologram", "Design choice")
+
+    @property
+    def pixel_size(self) -> float:
+        """Pixel size in the object plane (sensor pixel / magnification), in um."""
+        return self.sensor_pixel_size / self.magnification
 
 
 @dataclasses.dataclass
 class Camera:
     """
-    Camera model of the Sony ICX267 CCD following EMVA 1288 Release 4.0 Linear
+    Camera model of the Sony IMX183 CMOS following EMVA 1288 Release 4.0 Linear
     (2021), Sec. 2.4 Eq. 14: shot noise, dark current, read noise and a k-bit ADC.
     """
 
     background_electrons: float = _value(
         DEFAULT_BACKGROUND_ELECTRONS,
         "e- per pixel",
-        "Brightest exposure without clipping: the brightest fringe reaches 2.53x "
-        "the background, below the saturation capacity including 3 sigma of shot "
-        "noise",
+        "Brightest exposure without clipping: brightest fringe plus 3 sigma of "
+        "shot noise below the saturation capacity (PROVISIONAL until the "
+        "HOLO-002 cell objects exist)",
     )
     saturation_electrons: float = _value(
         DEFAULT_SATURATION_ELECTRONS,
         "e- per pixel",
-        "ICX267, Basler EMVA 1288 data overview (scout scA1390-17gm); 10.4 ke- in "
-        "Point Grey Mono Camera Sensor Review (2015)",
+        "IMX183, FLIR BFS-U3-200S6M EMVA 1288 results (20 C); 14,775 e- for "
+        "LUCID Triton 20 MP",
     )
     bit_depth: int = _value(
-        12,
-        "bits",
-        "ICX267 cameras output 12-bit data (Basler scA1390-17gm, Point Grey "
-        "FL3-GE-14S3M)",
+        12, "bits", "IMX183 12-bit ADC (FLIR BFS-U3-200S6M, LUCID Triton 20 MP)"
     )
     read_noise: float = _value(
-        10.0,
+        3.30,
         "e- rms",
-        "ICX267 temporal dark noise, Basler EMVA 1288 data overview; 11.48 e- in "
-        "Point Grey Mono Camera Sensor Review (2015)",
+        "IMX183 temporal dark noise, FLIR BFS-U3-200S6M EMVA 1288 results; 3.12 "
+        "e- for LUCID Triton 20 MP",
     )
     dark_current: float = _value(
-        234.0,
-        "e- per pixel per second, at 25 C",
-        "Sony ICX267AL datasheet: dark signal at most 8 mV of 380 mV at 60 C over "
-        "1/15 s = 3474 e-/s, scaled to 25 C with a doubling every 9 C (EMVA 1288 "
-        "Sec. 3.2, Eq. 31; worst case)",
+        0.81,
+        "e- per pixel per second",
+        "IMX183, LUCID Triton 20 MP EMVA 1288 results (conditions not stated)",
     )
     exposure_time: float = _value(
         0.0303,
@@ -98,10 +125,10 @@ class Speckle:
     """Speckle of the light source, Goodman, Speckle Phenomena in Optics (2007)."""
 
     grain_size: float = _value(
-        10.2,
+        0.59,
         "um",
-        "d_s = wavelength * z / D for scatterers at the object plane seen over the "
-        "sensor field (0.532 um * 20 mm / 1.04 mm)",
+        "Imaging speckle set by the objective, d_s = wavelength / (2 NA) = "
+        "0.532 / 0.9 um (Goodman 2007, Sec. 4.4); 2.5 pixels",
     )
     led_contrast: float = _value(
         0.014,
@@ -166,6 +193,7 @@ class Recipe:
             resolution=self.geometry.resolution,
             pixel_size=self.geometry.pixel_size,
             wavelength=self.geometry.wavelength,
+            numerical_aperture=self.geometry.numerical_aperture,
             z_distance=self.geometry.z_distance,
             bit_depth=self.camera.bit_depth,
             num_cells=self.geometry.num_cells,
@@ -196,7 +224,7 @@ class Recipe:
         """
         The selected noise configurations. With the default values their noise
         (rms deviation from the noise-free hologram, % of the background) is:
-        ideal 0.02 (quantisation only), camera 1.6, camera_led_speckle 2.1,
+        ideal 0.02 (quantisation only), camera 1.4, camera_led_speckle 2.0,
         camera_laser_speckle 12.1.
         """
         available: dict[str, NoiseConfig] = {

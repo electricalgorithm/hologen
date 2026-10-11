@@ -23,13 +23,22 @@ def test_defaults_are_the_cited_values() -> None:
     recipe = default_recipe()
     assert (recipe.dataset.total_samples, recipe.dataset.seed) == (25000, 10000)
     assert recipe.dataset.configurations == list(CONFIGURATION_NAMES)
-    assert dataclasses.astuple(recipe.geometry) == (224, 4.65, 0.532, 20000.0, 5)
-    assert recipe.camera.background_electrons == 4000.0
-    assert recipe.camera.saturation_electrons == 11000.0
+    assert dataclasses.astuple(recipe.geometry) == (
+        224,
+        2.4,
+        10.0,
+        0.45,
+        0.532,
+        20.0,
+        5,
+    )
+    assert recipe.geometry.pixel_size == pytest.approx(0.24)
+    assert recipe.camera.background_electrons == 5400.0
+    assert recipe.camera.saturation_electrons == 14837.0
     assert recipe.camera.bit_depth == 12
-    assert recipe.camera.read_noise == 10.0
-    assert recipe.camera.dark_electrons == pytest.approx(7.09, abs=0.01)
-    assert dataclasses.astuple(recipe.speckle) == (10.2, 0.014, 0.12)
+    assert recipe.camera.read_noise == 3.30
+    assert recipe.camera.dark_electrons == pytest.approx(0.0245, abs=0.0005)
+    assert dataclasses.astuple(recipe.speckle) == (0.59, 0.014, 0.12)
 
 
 def test_every_value_has_a_unit_or_source() -> None:
@@ -49,7 +58,7 @@ def test_toml_lists_the_sources() -> None:
     text = recipe_to_toml(default_recipe())
     assert "EMVA 1288" in text
     assert "arXiv:2006.09296" in text
-    assert "background_electrons = 4000.0  # e- per pixel" in text
+    assert "background_electrons = 5400.0  # e- per pixel" in text
 
 
 def test_partial_file_keeps_the_other_defaults(tmp_path: pathlib.Path) -> None:
@@ -58,7 +67,7 @@ def test_partial_file_keeps_the_other_defaults(tmp_path: pathlib.Path) -> None:
     recipe = load_recipe(path)
     assert recipe.camera.read_noise == 20.0
     assert recipe.dataset.seed == 7
-    assert recipe.camera.background_electrons == 4000.0
+    assert recipe.camera.background_electrons == 5400.0
     assert recipe.geometry == default_recipe().geometry
 
 
@@ -107,7 +116,8 @@ def test_hologram_config_uses_the_recipe() -> None:
     )
     config = recipe.hologram_config()
     assert (config.resolution, config.bit_depth) == (128, 10)
-    assert config.saturation_electrons == 11000.0
+    assert config.saturation_electrons == 14837.0
+    assert config.numerical_aperture == 0.45
 
 
 def test_recipe_is_a_plain_value() -> None:

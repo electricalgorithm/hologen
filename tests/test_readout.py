@@ -8,11 +8,11 @@ import pytest
 
 from hologen import InlineHologramSimulator, RandomNumberGenerator
 from hologen.inline_simulator import (
-    DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
 )
 from hologen.noises import add_bit_depth_noise, add_read_noise
 from hologen.noises.bit_depth import adc_gain
+from hologen.dataset.recipe import default_recipe
 from hologen.objects import add_random_cells
 
 SHAPE: tuple[int, int] = (256, 256)
@@ -121,22 +121,32 @@ def test_dataset_settings_do_not_saturate() -> None:
     """
     Regression test: with the 4000 e- exposure, the old ADC step (gain 1) clipped
     27% of the pixels at 4095. With the gain set by the saturation capacity no
-    hologram of the dataset geometry should reach full scale.
+    hologram of the dataset recipe (geometry, camera and laser speckle) should
+    reach full scale.
     """
+    recipe = default_recipe()
+    config = recipe.hologram_config()
+    noise = recipe.camera_noise(recipe.speckle.laser_contrast)
     clipped = 0.0
     for sample in range(20):
         RandomNumberGenerator.set_seed(10000 + sample)
-        sim = InlineHologramSimulator(resolution=224, pixel_size=4.65)
-        add_random_cells(sim, num_cells=5)
+        sim = InlineHologramSimulator(
+            config.resolution,
+            config.pixel_size,
+            config.wavelength,
+            config.numerical_aperture,
+        )
+        add_random_cells(sim, num_cells=config.num_cells)
         digital = sim.generate_hologram(
-            z_distance=20000,
-            speckle_grain_size=10.2,
-            speckle_contrast=0.12,
+            z_distance=config.z_distance,
+            speckle_grain_size=noise.speckle_grain_size,
+            speckle_contrast=noise.speckle_contrast,
             shot_noise=True,
-            dark_noise_mean=7.1,
-            read_noise_sigma=10.0,
-            bit_depth=12,
-            background_electrons=DEFAULT_BACKGROUND_ELECTRONS,
+            dark_noise_mean=noise.dark_noise_mean,
+            read_noise_sigma=noise.read_noise_sigma,
+            bit_depth=config.bit_depth,
+            background_electrons=config.background_electrons,
+            saturation_electrons=config.saturation_electrons,
         )
         clipped = max(clipped, float(numpy.mean(digital >= 4095)))
     assert clipped == 0.0

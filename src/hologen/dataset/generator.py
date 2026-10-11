@@ -132,6 +132,7 @@ class DatasetGenerator:
                     resolution=holo_config.resolution,
                     pixel_size=holo_config.pixel_size,
                     wavelength=holo_config.wavelength,
+                    numerical_aperture=holo_config.numerical_aperture,
                 )
 
                 # Generate hologram
