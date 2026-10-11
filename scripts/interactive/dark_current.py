@@ -13,9 +13,9 @@ The illumination is assumed to be adjusted so the background always collects the
 same number of photo-electrons, so only the dark electrons change.
 
 Usage:
-    uv run scripts/try_dark_current.py                 # simulated hologram
-    uv run scripts/try_dark_current.py photo.png       # your own image
-    uv run scripts/try_dark_current.py --doubling 6    # faster temperature rise
+    uv run scripts/interactive/dark_current.py                 # simulated hologram
+    uv run scripts/interactive/dark_current.py photo.png       # your own image
+    uv run scripts/interactive/dark_current.py --doubling 6    # faster temperature rise
 """
 
 import argparse
@@ -26,10 +26,16 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from create_dataset import DARK_CURRENT, EXPOSURE_TIME, READ_NOISE_SIGMA
 from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import add_dark_current_noise, add_shot_noise
-from try_common import SATURATION_ELECTRONS, load_intensity, simulate_intensity
+from common import (
+    DARK_CURRENT,
+    EXPOSURE_TIME,
+    READ_NOISE_SIGMA,
+    SATURATION_ELECTRONS,
+    load_intensity,
+    simulate_intensity,
+)
 
 REFERENCE_TEMPERATURE: float = 25.0  # C, temperature of DARK_CURRENT
 

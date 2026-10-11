@@ -7,10 +7,10 @@ fluctuations are added. Use the sliders to change the speckle contrast and grain
 size; the same random seed is reused so only the parameters change.
 
 Usage:
-    uv run scripts/try_speckle.py                      # simulated hologram
-    uv run scripts/try_speckle.py photo.png            # your own image
-    uv run scripts/try_speckle.py photo.png --contrast 0.3 --grain-size 30
-    uv run scripts/try_speckle.py photo.png --output noisy.png --no-show
+    uv run scripts/interactive/speckle.py                      # simulated hologram
+    uv run scripts/interactive/speckle.py photo.png            # your own image
+    uv run scripts/interactive/speckle.py photo.png --contrast 0.3 --grain-size 30
+    uv run scripts/interactive/speckle.py photo.png --output noisy.png --no-show
 """
 
 import argparse
@@ -23,7 +23,7 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.noises import add_speckle_noise
 from hologen.noises.speckle import generate_speckle_pattern
-from try_common import load_intensity, simulate_intensity
+from common import load_intensity, simulate_intensity
 
 
 def speckled(

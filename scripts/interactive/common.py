@@ -1,14 +1,35 @@
 """
-Shared helpers for the interactive try_*.py scripts.
+Shared helpers for the interactive noise explorers in this directory.
+
+Also re-exports the dataset recipe's cited values from scripts/create_dataset.py,
+so the explorers show exactly what the dataset uses instead of copies.
 """
 
 import pathlib
+import sys
 
 import matplotlib.pyplot as plt
 import numpy
 
 import hologen
 from hologen.objects import add_random_cells
+
+# create_dataset.py lives one directory up; make it importable from here only.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from create_dataset import (  # noqa: E402
+    DARK_CURRENT,
+    EXPOSURE_TIME,
+    READ_NOISE_SIGMA,
+)
+
+__all__: list[str] = [
+    "DARK_CURRENT",
+    "EXPOSURE_TIME",
+    "READ_NOISE_SIGMA",
+    "SATURATION_ELECTRONS",
+    "load_intensity",
+    "simulate_intensity",
+]
 
 # Saturation capacity of the modelled Sony ICX267 CCD (Basler EMVA 1288 data
 # overview, scout scA1390-17gm). Pixels collecting more electrons are clipped.

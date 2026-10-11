@@ -11,10 +11,10 @@ All images are divided by the exposure, so they keep the same brightness and onl
 the noise changes.
 
 Usage:
-    uv run scripts/try_shot_noise.py                   # simulated hologram
-    uv run scripts/try_shot_noise.py photo.png         # your own image
-    uv run scripts/try_shot_noise.py --electrons 200
-    uv run scripts/try_shot_noise.py photo.png --output noisy.png --no-show
+    uv run scripts/interactive/shot_noise.py                   # simulated hologram
+    uv run scripts/interactive/shot_noise.py photo.png         # your own image
+    uv run scripts/interactive/shot_noise.py --electrons 200
+    uv run scripts/interactive/shot_noise.py photo.png --output noisy.png --no-show
 """
 
 import argparse
@@ -27,7 +27,7 @@ from matplotlib.widgets import Slider
 import hologen
 from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import add_shot_noise
-from try_common import SATURATION_ELECTRONS, load_intensity, simulate_intensity
+from common import SATURATION_ELECTRONS, load_intensity, simulate_intensity
 
 
 def record(
