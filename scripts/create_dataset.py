@@ -16,14 +16,15 @@ from hologen import DatasetConfig, DatasetGenerator, HologramConfig, NoiseConfig
 
 # Dataset Configurations
 BATCH_SIZE = 250
-NUM_SAMPLES = 3125  # 25000 / 8 = 3125
+TOTAL_SAMPLES = 25000  # split equally over the noise configurations
 
 # Noise Configurations
 # Speckle contrast (std/mean of the speckle intensity) of a laser-illuminated
 # in-line hologram: 0.12 for a HeNe laser vs 0.014 for an LED (Hughes,
 # arXiv:2006.09296, 2020; order-of-magnitude anchor measured through a fibre
 # bundle). C = sigma / <I> as in Bianco et al., Light Sci. Appl. 7:48 (2018).
-SPECKLE_CONTRAST = 0.12
+SPECKLE_CONTRAST_LASER = 0.12
+SPECKLE_CONTRAST_LED = 0.014
 # Mean grain size d_s = wavelength * z / D (Goodman, Speckle Phenomena in Optics,
 # 2007) for scatterers at the object plane seen over the sensor field of view:
 # 0.532 um * 20000 um / (224 * 4.65 um) = 10.2 um, about 2.2 pixels.
@@ -52,6 +53,42 @@ EXPOSURE_TIME = 0.0303  # seconds
 DARK_NOISE_MEAN: float = DARK_CURRENT * EXPOSURE_TIME  # 7.1 e- per pixel per exposure
 
 
+def camera_noise(speckle_contrast: float | None = None) -> NoiseConfig:
+    """
+    Noise of a real recording: the camera always adds shot noise, dark current,
+    read noise and the 12-bit ADC (EMVA 1288 Eq. 14), so they cannot be switched
+    off one by one. Only the light source varies: speckle_contrast=None is a
+    spatially incoherent source without speckle.
+    """
+    speckle: bool = speckle_contrast is not None
+    return NoiseConfig(
+        speckle=speckle,
+        shot=True,
+        read=True,
+        dark=True,
+        speckle_contrast=speckle_contrast,
+        speckle_grain_size=SPECKLE_GRAIN_SIZE if speckle else None,
+        read_noise_sigma=READ_NOISE_SIGMA,
+        dark_noise_mean=DARK_NOISE_MEAN,
+    )
+
+
+def noise_configurations() -> dict[str, NoiseConfig]:
+    """
+    The noise configurations of the dataset, each with a distinct noise level
+    (rms deviation from the ideal hologram, in % of the background): ideal 0.02
+    (12-bit quantisation only), camera 1.6, LED-like speckle 2.1, laser speckle
+    12.1. The ideal set is a noise-free reference; all others are physically
+    possible recordings.
+    """
+    return {
+        "ideal": NoiseConfig(speckle=False, shot=False, read=False, dark=False),
+        "camera": camera_noise(),
+        "camera_led_speckle": camera_noise(SPECKLE_CONTRAST_LED),
+        "camera_laser_speckle": camera_noise(SPECKLE_CONTRAST_LASER),
+    }
+
+
 def main():
     # Create hologram configuration
     holo_config = HologramConfig(
@@ -71,102 +108,13 @@ def main():
         hologram_config=holo_config,
     )
 
-    # Create generator
+    # Create generator, with an equal share of the samples per configuration
     generator = DatasetGenerator(config, batch_size=BATCH_SIZE)
-    generator.add_config(
-        "no_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=False,
-            shot=False,
-            read=False,
-            dark=False,
-        ),
-    )
-    generator.add_config(
-        "speckle_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=True,
-            shot=False,
-            read=False,
-            dark=False,
-            speckle_contrast=SPECKLE_CONTRAST,
-            speckle_grain_size=SPECKLE_GRAIN_SIZE,
-        ),
-    )
-    generator.add_config(
-        "shot_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=False,
-            shot=True,
-            read=False,
-            dark=False,
-        ),
-    )
-    generator.add_config(
-        "speckle_shot_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=True,
-            shot=True,
-            read=False,
-            dark=False,
-            speckle_contrast=SPECKLE_CONTRAST,
-            speckle_grain_size=SPECKLE_GRAIN_SIZE,
-        ),
-    )
-    generator.add_config(
-        "read_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=False,
-            shot=False,
-            read=True,
-            dark=False,
-            read_noise_sigma=READ_NOISE_SIGMA,
-            dark_noise_mean=DARK_NOISE_MEAN,
-        ),
-    )
-    generator.add_config(
-        "dark_current_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=False,
-            shot=False,
-            read=False,
-            dark=True,
-            dark_noise_mean=DARK_NOISE_MEAN,
-        ),
-    )
-    generator.add_config(
-        "speckle_shot_read_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=True,
-            shot=True,
-            read=True,
-            dark=False,
-            speckle_contrast=SPECKLE_CONTRAST,
-            speckle_grain_size=SPECKLE_GRAIN_SIZE,
-            read_noise_sigma=READ_NOISE_SIGMA,
-        ),
-    )
-    generator.add_config(
-        "speckle_shot_read_dark_noise",
-        num_samples=NUM_SAMPLES,
-        noise=NoiseConfig(
-            speckle=True,
-            shot=True,
-            read=True,
-            dark=True,
-            speckle_contrast=SPECKLE_CONTRAST,
-            speckle_grain_size=SPECKLE_GRAIN_SIZE,
-            read_noise_sigma=READ_NOISE_SIGMA,
-            dark_noise_mean=DARK_NOISE_MEAN,
-        ),
-    )
+    configurations = noise_configurations()
+    for name, noise in configurations.items():
+        generator.add_config(
+            name, num_samples=TOTAL_SAMPLES // len(configurations), noise=noise
+        )
 
     # Generate the dataset
     stats = generator.generate()
