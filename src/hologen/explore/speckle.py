@@ -38,10 +38,21 @@ def speckled(
     seed: int,
 ) -> tuple[numpy.ndarray[float], numpy.ndarray[float]]:
     """
-    Return (pattern S, intensity with speckle).
+    Add speckle to an intensity and return the pattern that was used.
 
     Re-seeding before each call makes generate_speckle_pattern() return exactly
     the pattern that add_speckle_noise() multiplies the intensity by.
+
+    Args:
+        intensity (numpy.ndarray[float]): Intensity map, square.
+        pixel_size (float): Pixel size, in um.
+        grain_size (float): Mean speckle grain size, in um.
+        contrast (float): Speckle contrast std/mean, in (0, 1].
+        seed (int): Random seed of the pattern.
+
+    Returns:
+        tuple[numpy.ndarray[float], numpy.ndarray[float]]: The speckle pattern S
+            with mean 1, and the intensity multiplied by it.
     """
     hologen.RandomNumberGenerator.set_seed(seed)
     pattern = generate_speckle_pattern(
@@ -63,14 +74,15 @@ def run(
     Open the explorer.
 
     Args:
-        image: Image to use as the intensity; a simulated hologram if None.
-        contrast: Speckle contrast std/mean, in (0, 1].
-        grain_size: Mean speckle grain size (in microns).
-        pixel_size: Pixel size (in microns).
-        seed: Random seed; the same seed gives the same noise pattern.
-        save: Save the figure to this file instead of opening a window.
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        contrast (float): Speckle contrast std/mean, in (0, 1].
+        grain_size (float): Mean speckle grain size, in um.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise pattern.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
     """
-
     if image is None:
         intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
@@ -111,6 +123,13 @@ def run(
     )
 
     def update(_: float) -> None:
+        """
+        Redraw the figure after a slider moved.
+
+        Args:
+            _ (float): New value of the slider that moved, unused because every
+                slider is read again.
+        """
         new_pattern, result = speckled(
             intensity,
             pixel_size,

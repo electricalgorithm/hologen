@@ -49,7 +49,16 @@ DATASET_BITS: int = RECIPE.camera.bit_depth
 
 
 def collect(intensity: numpy.ndarray[float], seed: int) -> numpy.ndarray[float]:
-    """Electrons per pixel after the exposure: signal, shot noise and dark."""
+    """
+    Collect the electrons of one exposure, with shot noise and dark electrons.
+
+    Args:
+        intensity (numpy.ndarray[float]): Intensity with the background at 1.
+        seed (int): Random seed of the shot noise and dark electrons.
+
+    Returns:
+        numpy.ndarray[float]: Electrons per pixel, same shape as intensity.
+    """
     hologen.RandomNumberGenerator.set_seed(seed)
     electrons = add_shot_noise(intensity * DEFAULT_BACKGROUND_ELECTRONS)
     return add_dark_current_noise(electrons, DARK_CURRENT * EXPOSURE_TIME)
@@ -58,7 +67,18 @@ def collect(intensity: numpy.ndarray[float], seed: int) -> numpy.ndarray[float]:
 def read_out(
     electrons: numpy.ndarray[float], read_noise: float, bits: int, seed: int
 ) -> numpy.ndarray[float]:
-    """Add read noise and digitise; the seed fixes the read noise pattern."""
+    """
+    Add read noise and digitise the electrons.
+
+    Args:
+        electrons (numpy.ndarray[float]): Electrons per pixel.
+        read_noise (float): Read noise, in e- rms.
+        bits (int): ADC bit depth.
+        seed (int): Random seed; the read noise uses seed + 1.
+
+    Returns:
+        numpy.ndarray[float]: The recorded image in digital numbers.
+    """
     hologen.RandomNumberGenerator.set_seed(seed + 1)
     return add_bit_depth_noise(
         add_read_noise(electrons, read_noise), bits, SATURATION_ELECTRONS
@@ -77,14 +97,15 @@ def run(
     Open the explorer.
 
     Args:
-        image: Image to use as the intensity; a simulated hologram if None.
-        read_noise: Read noise (in e- rms).
-        bits: ADC bit depth.
-        pixel_size: Pixel size (in microns).
-        seed: Random seed; the same seed gives the same noise pattern.
-        save: Save the figure to this file instead of opening a window.
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        read_noise (float): Read noise, in e- rms.
+        bits (int): ADC bit depth.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise pattern.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
     """
-
     if image is None:
         intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
@@ -152,6 +173,13 @@ def run(
     )
 
     def update(_: float) -> None:
+        """
+        Redraw the figure after a slider moved.
+
+        Args:
+            _ (float): New value of the slider that moved, unused because every
+                slider is read again.
+        """
         read_noise = read_slider.val
         bits = int(bits_slider.val)
         gain = adc_gain(bits, SATURATION_ELECTRONS)

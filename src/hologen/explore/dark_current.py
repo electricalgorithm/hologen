@@ -43,7 +43,16 @@ REFERENCE_TEMPERATURE: float = 25.0  # C, temperature of DARK_CURRENT
 
 
 def dark_current_rate(temperature: float, doubling: float) -> float:
-    """Dark current (e-/s) at a temperature (EMVA 1288 Sec. 3.2, Eq. 31)."""
+    """
+    Compute the dark current at a temperature (EMVA 1288 Sec. 3.2, Eq. 31).
+
+    Args:
+        temperature (float): Sensor temperature, in C.
+        doubling (float): Temperature step that doubles the dark current, in C.
+
+    Returns:
+        float: The dark current, in e- per pixel per second.
+    """
     return DARK_CURRENT * 2 ** ((temperature - REFERENCE_TEMPERATURE) / doubling)
 
 
@@ -53,8 +62,16 @@ def record(
     """
     Record a dark frame and the hologram with shot noise and dark electrons.
 
+    Args:
+        intensity (numpy.ndarray[float]): Intensity with the background at 1.
+        electrons (float): Photo-electrons per pixel at the background.
+        dark_mean (float): Mean dark electrons per pixel.
+        seed (int): Random seed; the hologram uses seed + 1.
+
     Returns:
-        (dark frame in e-, hologram normalised to background = 1, clipped mask)
+        tuple[numpy.ndarray[float], numpy.ndarray[float], numpy.ndarray[bool]]:
+            The dark frame in electrons, the hologram normalised so the
+            background is 1, and the mask of clipped pixels.
     """
     hologen.RandomNumberGenerator.set_seed(seed)
     dark_frame = add_dark_current_noise(numpy.zeros_like(intensity), dark_mean)
@@ -78,15 +95,16 @@ def run(
     Open the explorer.
 
     Args:
-        image: Image to use as the intensity; a simulated hologram if None.
-        temperature: Sensor temperature (in C).
-        exposure: Exposure time (in seconds).
-        doubling: Temperature step that doubles the dark current (in C).
-        pixel_size: Pixel size (in microns).
-        seed: Random seed; the same seed gives the same noise pattern.
-        save: Save the figure to this file instead of opening a window.
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        temperature (float): Sensor temperature, in C.
+        exposure (float): Exposure time, in s.
+        doubling (float): Temperature step that doubles the dark current, in C.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise pattern.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
     """
-
     electrons: float = DEFAULT_BACKGROUND_ELECTRONS
     if image is None:
         intensity = simulate_intensity(pixel_size, seed)
@@ -149,6 +167,13 @@ def run(
     )
 
     def update(_: float) -> None:
+        """
+        Redraw the figure after a slider moved.
+
+        Args:
+            _ (float): New value of the slider that moved, unused because every
+                slider is read again.
+        """
         temperature = temperature_slider.val
         exposure = 10**exposure_slider.val
         rate = dark_current_rate(temperature, doubling)

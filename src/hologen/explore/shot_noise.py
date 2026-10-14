@@ -40,8 +40,15 @@ def record(
     """
     Record the intensity at the given exposure.
 
+    Args:
+        intensity (numpy.ndarray[float]): Intensity with the background at 1.
+        electrons (float): Photo-electrons per pixel at the background.
+        seed (int): Random seed of the shot noise.
+
     Returns:
-        (recorded intensity normalised back to the background = 1, clipped mask)
+        tuple[numpy.ndarray[float], numpy.ndarray[bool]]: The recorded intensity
+            normalised back so the background is 1, and the mask of clipped
+            pixels.
     """
     hologen.RandomNumberGenerator.set_seed(seed)
     counts = add_shot_noise(intensity * electrons)
@@ -61,13 +68,14 @@ def run(
     Open the explorer.
 
     Args:
-        image: Image to use as the intensity; a simulated hologram if None.
-        electrons: Photo-electrons per pixel at the background.
-        pixel_size: Pixel size (in microns).
-        seed: Random seed; the same seed gives the same noise pattern.
-        save: Save the figure to this file instead of opening a window.
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        electrons (float): Photo-electrons per pixel at the background.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise pattern.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
     """
-
     if image is None:
         intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
@@ -126,6 +134,13 @@ def run(
     )
 
     def update(_: float) -> None:
+        """
+        Redraw the figure after a slider moved.
+
+        Args:
+            _ (float): New value of the slider that moved, unused because every
+                slider is read again.
+        """
         electrons = 10**slider.val
         result, clipped = record(intensity, electrons, seed)
         noisy_image.set_data(result)

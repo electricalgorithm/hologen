@@ -12,10 +12,10 @@ import numpy
 from matplotlib.figure import Figure
 
 import hologen
-from hologen.dataset.recipe import default_recipe
+from hologen.dataset.recipe import Geometry, Recipe, default_recipe
 from hologen.objects import add_random_cells
 
-RECIPE = default_recipe()
+RECIPE: Recipe = default_recipe()
 DARK_CURRENT: float = RECIPE.camera.dark_current
 EXPOSURE_TIME: float = RECIPE.camera.exposure_time
 READ_NOISE_SIGMA: float = RECIPE.camera.read_noise
@@ -25,7 +25,16 @@ SATURATION_ELECTRONS: float = RECIPE.camera.saturation_electrons
 
 
 def load_intensity(path: pathlib.Path) -> numpy.ndarray[float]:
-    """Load an image as a square grayscale intensity map in [0, 1]."""
+    """
+    Load an image as a square grayscale intensity map in [0, 1].
+
+    Args:
+        path (pathlib.Path): Image file readable by matplotlib.
+
+    Returns:
+        numpy.ndarray[float]: The centre square of the image as luminance, shape
+            (side, side).
+    """
     image: numpy.ndarray = plt.imread(path)
     if numpy.issubdtype(image.dtype, numpy.integer):
         image = image / numpy.iinfo(image.dtype).max
@@ -42,12 +51,19 @@ def load_intensity(path: pathlib.Path) -> numpy.ndarray[float]:
 
 def simulate_intensity(pixel_size: float, seed: int) -> numpy.ndarray[float]:
     """
-    Simulate a clean, noise-free in-line hologram with the dataset geometry,
-    normalised so that the background illumination is 1 (|U|^2).
+    Simulate a clean, noise-free in-line hologram with the dataset geometry.
+
+    Args:
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed for the objects.
+
+    Returns:
+        numpy.ndarray[float]: The intensity |U|^2, normalised so that the
+            background illumination is 1, shape (resolution, resolution).
     """
-    geometry = RECIPE.geometry
+    geometry: Geometry = RECIPE.geometry
     hologen.RandomNumberGenerator.set_seed(seed)
-    sim = hologen.InlineHologramSimulator(
+    sim: hologen.InlineHologramSimulator = hologen.InlineHologramSimulator(
         resolution=geometry.resolution,
         pixel_size=pixel_size,
         wavelength=geometry.wavelength,
@@ -59,7 +75,14 @@ def simulate_intensity(pixel_size: float, seed: int) -> numpy.ndarray[float]:
 
 
 def show_or_save(fig: Figure, save: pathlib.Path | None) -> None:
-    """Open the interactive window, or save the figure without opening one."""
+    """
+    Open the interactive window, or save the figure without opening one.
+
+    Args:
+        fig (Figure): The explorer figure.
+        save (pathlib.Path | None): File to save the figure to, or None to open
+            the window.
+    """
     if save is None:
         plt.show()
         return
