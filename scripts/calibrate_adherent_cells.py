@@ -1,6 +1,8 @@
-"""
-Measure the per-cell statistics of real adherent cells that the procedural cell
-model (hologen.objects.adherent_cells) is calibrated to.
+r"""
+Measure the per-cell statistics of real adherent cells for the procedural model.
+
+The procedural cell model (hologen.objects.adherent_cells) is calibrated to these
+statistics.
 
 Data: Vicar, Balvan, Gumulec, Quantitative phase microscopy labelled and unlabelled
 dataset of various adherent cell lines, Zenodo, doi:10.5281/zenodo.4771831
@@ -11,7 +13,7 @@ al., Biophys. J. 121:1632 (2022), and can be changed with --pixel-size.
 
 Run with:
 
-    uv run --with tifffile --with imagecodecs scripts/calibrate_adherent_cells.py \\
+    uv run --with tifffile --with imagecodecs scripts/calibrate_adherent_cells.py \
         ../datasets/annoted-quantitiative-phase-microscopy-cell/labelled
 """
 
@@ -27,7 +29,19 @@ ALPHA: float = 0.18  # um^3 / pg
 
 
 def cell_statistics(opd: numpy.ndarray, cell: numpy.ndarray, pixel: float) -> dict:
-    """Size, elongation and optical path statistics of one segmented cell."""
+    """
+    Measure the size, elongation and optical path statistics of one cell.
+
+    Args:
+        opd (numpy.ndarray): Optical path difference of the field, in um.
+        cell (numpy.ndarray): Boolean mask of the cell, same shape as opd.
+        pixel (float): Pixel size, in um.
+
+    Returns:
+        dict: Equivalent diameter in um ("diameter"), aspect ratio ("aspect"),
+            95th percentile of the OPD in um ("peak_opd") and mean OPD divided
+            by that peak ("fill").
+    """
     ys, xs = numpy.nonzero(cell)
     area = cell.sum() * pixel**2
     covariance = numpy.cov(numpy.vstack([xs, ys]))
@@ -43,6 +57,7 @@ def cell_statistics(opd: numpy.ndarray, cell: numpy.ndarray, pixel: float) -> di
 
 
 def main() -> None:
+    """Measure every cell in the labelled folders and print the statistics."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     parser.add_argument(
         "labelled", type=pathlib.Path, help="folder with one folder per cell line"
@@ -69,6 +84,15 @@ def main() -> None:
                 rows.append(stats)
 
     def lognormal(values: list[float]) -> str:
+        """
+        Summarise positive values by a lognormal fit.
+
+        Args:
+            values (list[float]): Positive values.
+
+        Returns:
+            str: The median and the standard deviation of the logarithms.
+        """
         logs = numpy.log(numpy.asarray(values))
         return f"median {numpy.exp(logs.mean()):.3f}, log s.d. {logs.std():.3f}"
 

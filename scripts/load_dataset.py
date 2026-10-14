@@ -66,7 +66,20 @@ def create_dataloader(
     resolution: int,
     batch_size: int = 32,
 ):
-    """Create batches of samples for training."""
+    """
+    Yield batches of one group's samples for training.
+
+    Args:
+        dataset_dir (Path): The dataset folder.
+        data_type (str): Kind of data, one of "hologram", "ground_truth" or
+            "reconstructed".
+        config_name (str): Group to load, as stored in config_name.
+        resolution (int): Image size in pixels; images are square.
+        batch_size (int): Number of samples per batch.
+
+    Yields:
+        np.ndarray: A batch of shape (batch, resolution, resolution).
+    """
     # Load all parquet files for this data type
     parquet_files = sorted(glob(str(dataset_dir / f"{data_type}_*.parquet")))
     dfs = [pd.read_parquet(f) for f in parquet_files]

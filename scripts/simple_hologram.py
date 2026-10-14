@@ -6,6 +6,8 @@
 #     "numpy",
 # ]
 # ///
+"""Simulate one hologram of random ellipses and show its phase and intensity."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,6 +15,7 @@ import hologen
 
 
 def main() -> None:
+    """Simulate one hologram of random ellipses and show its phase and intensity."""
     # Example: Initialize with a seed for reproducibility
     hologen.RandomNumberGenerator.set_seed(42)
 

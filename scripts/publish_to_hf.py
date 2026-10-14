@@ -4,12 +4,15 @@
 #     "huggingface_hub",
 # ]
 # ///
+"""Upload a generated dataset folder to the Hugging Face Hub."""
+
 import argparse
 from pathlib import Path
 from huggingface_hub import HfApi
 
 
 def main() -> None:
+    """Upload a generated dataset folder to a Hugging Face dataset repository."""
     parser = argparse.ArgumentParser(description="Upload dataset to Hugging Face Hub")
     parser.add_argument(
         "--repo_id",
