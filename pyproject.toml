@@ -28,3 +28,18 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.ruff.lint]
+# Docstrings follow the Google convention (Args, Returns, Raises sections). The
+# summary may start on the line after the opening quotes, as most modules do.
+extend-select = ["D"]
+ignore = ["D212"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Test names describe the test, so test functions need no docstring.
+"tests/**" = ["D103"]
+# Typer cuts the --help text at a form feed, written \f in the docstrings.
+"src/hologen/cli.py" = ["D301"]
