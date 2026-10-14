@@ -31,7 +31,7 @@ class DatasetGenerator:
     various noise configurations. Supports batch writing for memory-efficient
     generation of large datasets.
 
-    Usage:
+    Examples:
         >>> recipe = default_recipe()
         >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=recipe.hologram_config())
         >>> # For large datasets, use smaller batch_size to limit memory usage
@@ -45,10 +45,9 @@ class DatasetGenerator:
         Initialize the dataset generator.
 
         Args:
-            config: Dataset configuration. Must be provided.
-            batch_size: Number of samples to accumulate before writing to disk.
-                       Smaller values use less memory but may be slower.
-                       Default is 100 samples.
+            config (DatasetConfig): Output folder, base seed and hologram settings.
+            batch_size (int): Number of samples to accumulate before writing to
+                disk. Smaller values use less memory but may be slower.
         """
         self.config = config
         self.batch_size = batch_size
@@ -72,14 +71,18 @@ class DatasetGenerator:
         Add a noise configuration to generate.
 
         Args:
-            name: Unique name for this configuration (used in filenames)
-            num_samples: Number of samples to generate for this configuration
-            noise: Noise configuration. Must be provided.
-            objects: Object family (placement and exposure). None places the
-                first-version ellipses with the HologramConfig exposure.
+            name (str): Unique name of the group, stored as config_name.
+            num_samples (int): Number of holograms to generate for this group.
+            noise (NoiseConfig): Noise to apply to the recorded holograms.
+            objects (ObjectFamily | None): Object family, with its placement and
+                exposure. None places the first-version ellipses with the
+                HologramConfig exposure.
 
         Returns:
-            self for method chaining
+            DatasetGenerator: The generator itself, for method chaining.
+
+        Raises:
+            ValueError: If a group with this name was already added.
 
         Examples:
             >>> generator = DatasetGenerator(config)
@@ -97,13 +100,14 @@ class DatasetGenerator:
         Generate the complete dataset.
 
         Args:
-            verbose: If True, print progress information
+            verbose (bool): Whether to print progress information.
 
         Returns:
-            Dictionary with generation statistics
+            dict[str, Any]: Generation statistics, with the total number of
+                samples, the number of groups and the absolute output folder.
 
         Raises:
-            ValueError: If no configurations have been added
+            ValueError: If no configurations have been added.
         """
         if not self._configs:
             raise ValueError(
@@ -204,11 +208,19 @@ class DatasetGenerator:
         Generate a single hologram with the given noise configuration.
 
         Args:
-            sim: InlineHologramSimulator instance
-            noise: Noise configuration to apply
+            sim (InlineHologramSimulator): Simulator for this hologram, seeded
+                and still empty.
+            noise (NoiseConfig): Noise configuration to apply.
+            objects (ObjectFamily | None): Object family to place and its
+                exposure, or None for the first-version ellipses with the
+                HologramConfig exposure.
 
         Returns:
-            Tuple of (ground_truth, hologram_intensity, reconstructed_object)
+            tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]: The
+                complex ground truth, the recorded intensity in digital numbers,
+                the back-propagated field normalised by the background, and the
+                metadata of the hologram (object family, objects placed, exposure
+                and clipped pixel fraction).
         """
         holo_config = self.config.hologram_config
 
@@ -369,8 +381,16 @@ class DatasetGenerator:
         self._metadata.clear()
 
     def _describe_noise(self, noise: NoiseConfig) -> str:
-        """Generate a human-readable description of noise configuration."""
-        parts = []
+        """
+        Describe a noise configuration in a few words.
+
+        Args:
+            noise (NoiseConfig): The noise configuration.
+
+        Returns:
+            str: The enabled noise sources joined by "+", or "no noise".
+        """
+        parts: list[str] = []
         if noise.speckle:
             parts.append("speckle")
         if noise.shot:
@@ -390,8 +410,9 @@ class DatasetGenerator:
         Generate visualization figure showing examples from each configuration.
 
         Args:
-            examples: Dictionary mapping config names to (ground_truth, hologram, reconstructed)
-            verbose: If True, print progress
+            examples (dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]): One
+                example per group, as (ground truth, hologram, reconstruction).
+            verbose (bool): Whether to print progress.
         """
         if verbose:
             print("\nGenerating visualization figure...")

@@ -1,3 +1,5 @@
+"""Dataset recipes, noise configurations and the dataset generator."""
+
 from .configs import HologramConfig
 from .configs import DatasetConfig
 from .configs import NoiseConfig

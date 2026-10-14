@@ -1,3 +1,5 @@
+"""hologen, a simulator of in-line holograms with a physical camera model."""
+
 from .inline_simulator import InlineHologramSimulator
 from .dataset import (
     DatasetConfig,

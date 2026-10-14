@@ -56,7 +56,27 @@ def build_recipe(
     batch_size: int | None,
     objects: list[str] | None = None,
 ) -> Recipe:
-    """Read the recipe file (or the defaults) and apply the command-line flags."""
+    """
+    Read the recipe file, or the defaults, and apply the command-line flags.
+
+    Args:
+        recipe_file (pathlib.Path | None): TOML recipe; the default recipe if None.
+        samples (int | None): Total number of holograms, or None to keep the recipe's.
+        seed (int | None): Base random seed, or None to keep the recipe's.
+        resolution (int | None): Hologram size in pixels, or None to keep the
+            recipe's.
+        configs (list[str] | None): Noise configurations, or None to keep the
+            recipe's.
+        batch_size (int | None): Holograms per parquet file, or None to keep the
+            recipe's.
+        objects (list[str] | None): Object families, or None to keep the recipe's.
+
+    Returns:
+        Recipe: The recipe with the flags applied.
+
+    Raises:
+        ValueError: If the recipe file or a flag is invalid.
+    """
     recipe: Recipe = load_recipe(recipe_file) if recipe_file else default_recipe()
     dataset_changes: dict[str, int | list[str]] = {
         key: value
@@ -244,7 +264,12 @@ def recipe_command(
         typer.Option("--output", "-o", help="Write to this file instead of printing."),
     ] = None,
 ) -> None:
-    """Write the default recipe, with the unit and source of every value."""
+    """Write the default recipe, with the unit and source of every value.
+
+    \f
+    Args:
+        output (pathlib.Path | None): File to write to; printed if None.
+    """
     text: str = recipe_to_toml(default_recipe())
     if output is None:
         typer.echo(text, nl=False)
@@ -426,7 +451,19 @@ def speckle(
     seed: Seed = 0,
     save: Save = None,
 ) -> None:
-    """Speckle: contrast and grain size of the light source."""
+    """Speckle: contrast and grain size of the light source.
+
+    \f
+    Args:
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        contrast (float): Speckle contrast std/mean, in (0, 1].
+        grain_size (float): Mean speckle grain size, in um.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
+    """
     from hologen.explore import speckle as explorer
 
     explorer.run(image, contrast, grain_size, pixel_size, seed, save)
@@ -442,7 +479,18 @@ def shot_noise(
     seed: Seed = 0,
     save: Save = None,
 ) -> None:
-    """Shot noise: exposure in electrons and sensor saturation."""
+    """Shot noise: exposure in electrons and sensor saturation.
+
+    \f
+    Args:
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        electrons (float): Photo-electrons per pixel at the background.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
+    """
     from hologen.explore import shot_noise as explorer
 
     explorer.run(image, electrons, pixel_size, seed, save)
@@ -462,7 +510,20 @@ def dark_current(
     seed: Seed = 0,
     save: Save = None,
 ) -> None:
-    """Dark current: sensor temperature and exposure time."""
+    """Dark current: sensor temperature and exposure time.
+
+    \f
+    Args:
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        temperature (float): Sensor temperature, in C.
+        exposure (float): Exposure time, in s.
+        doubling (float): Temperature step that doubles the dark current, in C.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
+    """
     from hologen.explore import dark_current as explorer
 
     explorer.run(image, temperature, exposure, doubling, pixel_size, seed, save)
@@ -481,7 +542,19 @@ def readout(
     seed: Seed = 0,
     save: Save = None,
 ) -> None:
-    """Readout: read noise and ADC bit depth."""
+    """Readout: read noise and ADC bit depth.
+
+    \f
+    Args:
+        image (pathlib.Path | None): Image to use as the intensity; a simulated
+            hologram if None.
+        read_noise (float): Read noise, in e- rms.
+        bits (int): ADC bit depth.
+        pixel_size (float): Pixel size, in um.
+        seed (int): Random seed; the same seed gives the same noise.
+        save (pathlib.Path | None): File to save the figure to instead of opening
+            a window.
+    """
     from hologen.explore import readout as explorer
 
     explorer.run(image, read_noise, bits, pixel_size, seed, save)

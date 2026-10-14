@@ -1,3 +1,5 @@
+"""Settings of the simulator (HologramConfig), the noise and the dataset output."""
+
 import dataclasses
 import pathlib
 

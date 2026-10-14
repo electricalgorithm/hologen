@@ -1,8 +1,8 @@
 """
-The dataset recipe: every physical value used to generate a dataset, with its unit
-and source, and the noise configurations built from them.
+The dataset recipe, which holds every physical value used to generate a dataset.
 
-A recipe can be written to and read from a TOML file, so a dataset is reproducible
+Each value carries its unit and source, and the noise configurations and object
+families are built from them. A recipe can be written to and read from a TOML file, so a dataset is reproducible
 from one versioned file. Values missing from a file keep their defaults.
 """
 
@@ -19,6 +19,7 @@ from hologen.objects.red_blood_cells import add_red_blood_cells
 from hologen.inline_simulator import (
     DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
+    InlineHologramSimulator,
 )
 
 # Noise configurations, from the noise-free reference to the noisiest recording.
@@ -38,16 +39,28 @@ OBJECT_FAMILY_NAMES: tuple[str, ...] = (
 
 
 def _value(default: Any, unit: str, source: str) -> Any:
-    """Declare a recipe value together with its unit and source."""
+    """
+    Declare a recipe value together with its unit and source.
+
+    Args:
+        default (Any): Default value of the field.
+        unit (str): Unit of the value, empty if it has none.
+        source (str): Citation or reason for the default.
+
+    Returns:
+        Any: A dataclass field that keeps the unit and source as metadata.
+    """
     return dataclasses.field(default=default, metadata={"unit": unit, "source": source})
 
 
 @dataclasses.dataclass
 class Geometry:
     """
-    Magnified in-line (Gabor) holographic microscope of Wdowiak et al.,
-    arXiv:2508.15419 (2025): a defocused detector behind a microscope objective.
-    Distances and pixel sizes are given in the object plane.
+    Geometry of the magnified in-line (Gabor) holographic microscope.
+
+    The setup is that of Wdowiak et al., arXiv:2508.15419 (2025), where a
+    defocused detector sits behind a microscope objective. Distances and pixel
+    sizes are given in the object plane.
     """
 
     resolution: int = _value(
@@ -81,15 +94,22 @@ class Geometry:
 
     @property
     def pixel_size(self) -> float:
-        """Pixel size in the object plane (sensor pixel / magnification), in um."""
+        """
+        Pixel size in the object plane.
+
+        Returns:
+            float: The sensor pixel size divided by the magnification, in um.
+        """
         return self.sensor_pixel_size / self.magnification
 
 
 @dataclasses.dataclass
 class Camera:
     """
-    Camera model of the Sony IMX183 CMOS following EMVA 1288 Release 4.0 Linear
-    (2021), Sec. 2.4 Eq. 14: shot noise, dark current, read noise and a k-bit ADC.
+    Camera model of the Sony IMX183 CMOS.
+
+    The model follows EMVA 1288 Release 4.0 Linear (2021), Sec. 2.4 Eq. 14, with
+    shot noise, dark current, read noise and a k-bit ADC.
     """
 
     background_electrons: float = _value(
@@ -127,7 +147,12 @@ class Camera:
 
     @property
     def dark_electrons(self) -> float:
-        """Mean dark electrons per pixel in one exposure (EMVA 1288 Eq. 29)."""
+        """
+        Mean dark electrons per pixel in one exposure (EMVA 1288 Eq. 29).
+
+        Returns:
+            float: Dark current times exposure time, in e- per pixel.
+        """
         return self.dark_current * self.exposure_time
 
 
@@ -235,8 +260,17 @@ class Dataset:
     )
 
     def __post_init__(self) -> None:
+        """
+        Check the configurations, object families and dataset size.
+
+        Raises:
+            ValueError: If a configuration or object family is unknown, missing
+                or repeated, or if there are fewer samples than groups.
+        """
         # Check if any unknown configuration type is given.
-        unknown = [c for c in self.configurations if c not in CONFIGURATION_NAMES]
+        unknown: list[str] = [
+            c for c in self.configurations if c not in CONFIGURATION_NAMES
+        ]
         if unknown:
             raise ValueError(
                 f"Unknown configuration(s) {unknown}; choose from "
@@ -248,7 +282,7 @@ class Dataset:
             raise ValueError("Configurations must not repeat.")
 
         # Check if any unknown object type is given.
-        unknown: list[str] = [o for o in self.objects if o not in OBJECT_FAMILY_NAMES]
+        unknown = [o for o in self.objects if o not in OBJECT_FAMILY_NAMES]
         if unknown:
             raise ValueError(
                 f"Unknown object famil(y/ies) {unknown}; choose from "
@@ -279,7 +313,12 @@ class Recipe:
     objects: Objects = dataclasses.field(default_factory=Objects)
 
     def hologram_config(self) -> HologramConfig:
-        """The simulator settings of this recipe."""
+        """
+        Collect the simulator settings of this recipe.
+
+        Returns:
+            HologramConfig: Geometry and camera settings for the simulator.
+        """
         return HologramConfig(
             resolution=self.geometry.resolution,
             pixel_size=self.geometry.pixel_size,
@@ -294,10 +333,19 @@ class Recipe:
 
     def camera_noise(self, speckle_contrast: float | None = None) -> NoiseConfig:
         """
-        Noise of a real recording: the camera always adds shot noise, dark current,
-        read noise and quantisation, so they cannot be switched off one by one.
-        Only the speckle of the light source varies. The illumination is always
-        coherent (the hologram needs it); None means a speckle-free source.
+        Describe the noise of a real recording.
+
+        The camera always adds shot noise, dark current, read noise and
+        quantisation, so they cannot be switched off one by one. Only the speckle
+        of the light source varies. The illumination is always coherent, because
+        the hologram needs it.
+
+        Args:
+            speckle_contrast (float | None): Speckle contrast of the light source
+                (std/mean), or None for a speckle-free source.
+
+        Returns:
+            NoiseConfig: The camera noise with the given speckle.
         """
         speckle: bool = speckle_contrast is not None
         return NoiseConfig(
@@ -313,10 +361,15 @@ class Recipe:
 
     def noise_configurations(self) -> dict[str, NoiseConfig]:
         """
-        The selected noise configurations. With the default values their noise
-        (rms deviation from the noise-free hologram, % of the background) is:
-        ideal 0.02 (quantisation only), camera 1.4, camera_led_speckle 2.0,
-        camera_laser_speckle 12.1.
+        Build the noise configurations selected in the dataset section.
+
+        With the default values and the first-version ellipses, the rms deviation
+        from the noise-free hologram is 0.02% of the background for ideal
+        (quantisation only), 1.4% for camera, 2.0% for camera_led_speckle and
+        12.1% for camera_laser_speckle.
+
+        Returns:
+            dict[str, NoiseConfig]: Noise configuration by name, in recipe order.
         """
         available: dict[str, NoiseConfig] = {
             "ideal": NoiseConfig(speckle=False, shot=False, read=False, dark=False),
@@ -327,18 +380,51 @@ class Recipe:
         return {name: available[name] for name in self.dataset.configurations}
 
     def object_families(self) -> dict[str, ObjectFamily]:
-        """Every object family with its placement and its calibrated exposure."""
+        """
+        Build every object family with its placement and calibrated exposure.
+
+        Returns:
+            dict[str, ObjectFamily]: Object family by name, for all known
+                families, not only the selected ones.
+        """
         objects: Objects = self.objects
 
-        def red_blood_cells(sim) -> int:
-            area = (sim.resolution * sim.pixel_size) ** 2
-            count = int(round(objects.red_blood_cell_density * area))
+        def red_blood_cells(sim: InlineHologramSimulator) -> int:
+            """
+            Place red blood cells at the recipe density.
+
+            Args:
+                sim (InlineHologramSimulator): Simulator to place the cells in.
+
+            Returns:
+                int: Number of cells placed.
+            """
+            area: float = (sim.resolution * sim.pixel_size) ** 2
+            count: int = int(round(objects.red_blood_cell_density * area))
             return add_red_blood_cells(sim, count) if count else 0
 
-        def adherent_cells(sim) -> int:
+        def adherent_cells(sim: InlineHologramSimulator) -> int:
+            """
+            Place adherent cells up to the recipe coverage.
+
+            Args:
+                sim (InlineHologramSimulator): Simulator to place the cells in.
+
+            Returns:
+                int: Number of cells placed.
+            """
             return add_adherent_cells(sim, coverage=objects.adherent_coverage)
 
-        def ellipses(sim) -> int:
+        def ellipses(sim: InlineHologramSimulator) -> int:
+            """
+            Place the first-version ellipses.
+
+            Args:
+                sim (InlineHologramSimulator): Simulator to place the ellipses in.
+
+            Returns:
+                int: Number of ellipses placed.
+            """
             add_random_cells(sim, num_cells=self.geometry.num_cells)
             return self.geometry.num_cells
 
@@ -360,8 +446,11 @@ class Recipe:
 
     def groups(self) -> list[tuple[str, NoiseConfig, ObjectFamily]]:
         """
-        The dataset groups: every selected noise configuration with every
-        selected object family, named "configuration/family".
+        Combine every selected noise configuration with every object family.
+
+        Returns:
+            list[tuple[str, NoiseConfig, ObjectFamily]]: One entry per group,
+                named "configuration/family", with its noise and object family.
         """
         noises: dict[str, NoiseConfig] = self.noise_configurations()
         families: dict[str, ObjectFamily] = self.object_families()
@@ -372,21 +461,45 @@ class Recipe:
         ]
 
     def samples_per_group(self) -> dict[str, int]:
-        """Split the samples equally; any remainder goes to the first groups."""
+        """
+        Split the samples equally over the groups.
+
+        Any remainder goes to the first groups, so no sample is lost.
+
+        Returns:
+            dict[str, int]: Number of holograms by group name.
+        """
         names: list[str] = [name for name, _, _ in self.groups()]
         share, remainder = divmod(self.dataset.total_samples, len(names))
         return {name: share + (i < remainder) for i, name in enumerate(names)}
 
 
 def default_recipe() -> Recipe:
-    """The recipe of the HoloPASWIN dataset, with cited values."""
+    """
+    Return the recipe of the HoloPASWIN dataset.
+
+    Returns:
+        Recipe: The recipe with the cited default values.
+    """
     return Recipe()
 
 
 def load_recipe(path: str | pathlib.Path) -> Recipe:
     """
-    Read a recipe from a TOML file. Values missing from the file keep their
-    defaults; unknown sections or keys are rejected to catch typos.
+    Read a recipe from a TOML file.
+
+    Values missing from the file keep their defaults. Unknown sections or keys
+    are rejected, which catches typos.
+
+    Args:
+        path (str | pathlib.Path): The TOML file.
+
+    Returns:
+        Recipe: The recipe in the file.
+
+    Raises:
+        ValueError: If the file has an unknown section or key, or an invalid
+            dataset section.
     """
     with open(path, "rb") as file:
         data: dict[str, Any] = tomllib.load(file)
@@ -394,15 +507,28 @@ def load_recipe(path: str | pathlib.Path) -> Recipe:
 
 
 def recipe_from_dict(data: dict[str, Any]) -> Recipe:
-    """Build a recipe from nested dictionaries such as a parsed TOML file."""
-    defaults = default_recipe()
+    """
+    Build a recipe from nested dictionaries such as a parsed TOML file.
+
+    Args:
+        data (dict[str, Any]): Values by section and key. Missing values keep
+            their defaults.
+
+    Returns:
+        Recipe: The recipe with the given values.
+
+    Raises:
+        ValueError: If a section or key is unknown, or the dataset section is
+            invalid.
+    """
+    defaults: Recipe = default_recipe()
     sections: dict[str, Any] = {}
     for section_name, values in data.items():
         if section_name not in {f.name for f in dataclasses.fields(Recipe)}:
             raise ValueError(f"Unknown recipe section [{section_name}].")
-        section = getattr(defaults, section_name)
-        known = {f.name for f in dataclasses.fields(section)}
-        unknown = sorted(set(values) - known)
+        section: Any = getattr(defaults, section_name)
+        known: set[str] = {f.name for f in dataclasses.fields(section)}
+        unknown: list[str] = sorted(set(values) - known)
         if unknown:
             raise ValueError(
                 f"Unknown key(s) {unknown} in [{section_name}]; expected one of "
@@ -413,7 +539,15 @@ def recipe_from_dict(data: dict[str, Any]) -> Recipe:
 
 
 def _toml_value(value: Any) -> str:
-    """Format a recipe value as a TOML literal."""
+    """
+    Format a recipe value as a TOML literal.
+
+    Args:
+        value (Any): A string, list, number or boolean.
+
+    Returns:
+        str: The value as TOML.
+    """
     if isinstance(value, str):
         return f'"{value}"'
     if isinstance(value, list):
@@ -422,19 +556,27 @@ def _toml_value(value: Any) -> str:
 
 
 def recipe_to_toml(recipe: Recipe) -> str:
-    """Write a recipe as TOML, with the unit and source of every value."""
+    """
+    Write a recipe as TOML, with the unit and source of every value.
+
+    Args:
+        recipe (Recipe): The recipe to write.
+
+    Returns:
+        str: The TOML text, ending with a newline.
+    """
     lines: list[str] = [
         "# hologen dataset recipe",
         "# Generate with: hologen generate --recipe <this file>",
     ]
     for section_field in dataclasses.fields(recipe):
-        section = getattr(recipe, section_field.name)
+        section: Any = getattr(recipe, section_field.name)
         lines += ["", f"[{section_field.name}]"]
         for field in dataclasses.fields(section):
             source: str = field.metadata.get("source", "")
             unit: str = field.metadata.get("unit", "")
             if source:
                 lines.append(f"# {source}")
-            line = f"{field.name} = {_toml_value(getattr(section, field.name))}"
+            line: str = f"{field.name} = {_toml_value(getattr(section, field.name))}"
             lines.append(f"{line}  # {unit}" if unit else line)
     return "\n".join(lines) + "\n"
