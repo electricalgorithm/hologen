@@ -2,10 +2,13 @@
 End-to-end tests of the hologen command-line interface.
 """
 
+from pandas.core.frame import DataFrame
+from typer.testing import Result
 import pathlib
 import tomllib
 
 import matplotlib
+import pandas
 import pytest
 from typer.testing import CliRunner
 
@@ -60,10 +63,44 @@ def test_generate_uses_only_the_chosen_configurations(tmp_path: pathlib.Path) ->
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.stdout
 
-    import pandas as pd
+    names: DataFrame = pandas.read_parquet(
+        output / "hologram_0000.parquet", columns=["config_name"]
+    )
+    assert sorted(names["config_name"].unique()) == [
+        "camera_laser_speckle/adherent_cells",
+        "camera_laser_speckle/red_blood_cells",
+        "ideal/adherent_cells",
+        "ideal/red_blood_cells",
+    ]
 
-    names = pd.read_parquet(output / "hologram_0000.parquet", columns=["config_name"])
-    assert sorted(names["config_name"].unique()) == ["camera_laser_speckle", "ideal"]
+
+def test_generate_uses_only_the_chosen_object_families(
+    tmp_path: pathlib.Path,
+) -> None:
+    output: pathlib.Path = tmp_path / "data"
+    args: list[str] = [
+        "generate",
+        "-o",
+        str(output),
+        *TINY,
+        "-c",
+        "camera",
+        "-O",
+        "ellipses",
+    ]
+    result: Result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.stdout
+    metadata: DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
+    assert set(metadata["object_family"]) == {"ellipses"}
+    assert len(metadata) == 8
+
+
+def test_unknown_object_family_is_a_clear_error(tmp_path: pathlib.Path) -> None:
+    result: Result = runner.invoke(
+        app, ["generate", "-o", str(tmp_path / "d"), *TINY, "-O", "neurons"]
+    )
+    assert result.exit_code == 2
+    assert "Unknown object" in result.output
 
 
 def test_flags_override_the_recipe_file(tmp_path: pathlib.Path) -> None:

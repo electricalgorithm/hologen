@@ -12,6 +12,10 @@ import tomllib
 from typing import Any
 
 from hologen.dataset.configs import HologramConfig, NoiseConfig
+from hologen.objects.adherent_cells import add_adherent_cells
+from hologen.objects.families import ObjectFamily
+from hologen.objects.random_cells import add_random_cells
+from hologen.objects.red_blood_cells import add_red_blood_cells
 from hologen.inline_simulator import (
     DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
@@ -23,6 +27,13 @@ CONFIGURATION_NAMES: tuple[str, ...] = (
     "camera",
     "camera_led_speckle",
     "camera_laser_speckle",
+)
+
+# Kinds of sample. "ellipses" are the first-version objects, kept as a baseline.
+OBJECT_FAMILY_NAMES: tuple[str, ...] = (
+    "red_blood_cells",
+    "adherent_cells",
+    "ellipses",
 )
 
 
@@ -144,6 +155,55 @@ class Speckle:
 
 
 @dataclasses.dataclass
+class Objects:
+    """
+    Sample content and the exposure used to record it, per object family.
+
+    Each family has its own exposure, the way an operator sets one per type of
+    sample. It is the largest background for which `exposure_percentile`
+    percent of the family's holograms stay unsaturated (hologen.dataset.exposure).
+    Recalibrate them whenever the geometry, speckle, saturation capacity or
+    object settings change.
+    """
+
+    red_blood_cell_density: float = _value(
+        0.00415,
+        "cells per um^2",
+        "Design choice: 12 cells per 54 x 54 um field, a sparse monolayer",
+    )
+    adherent_coverage: float = _value(
+        0.263,
+        "fraction of the field",
+        "Measured median field coverage of 7476 adherent cells "
+        "(scripts/calibrate_adherent_cells.py, Vicar et al. data)",
+    )
+    exposure_percentile: float = _value(
+        95.0,
+        "percent",
+        "Percent of holograms that must not saturate; the rest clip at the foci "
+        "of the most strongly refracting cells",
+    )
+    red_blood_cells_background_electrons: float = _value(
+        2982.0,
+        "e- per pixel",
+        "Calibrated with hologen.dataset.exposure (see exposure_calibration)",
+    )
+    adherent_cells_background_electrons: float = _value(
+        2593.0,
+        "e- per pixel",
+        "Calibrated with hologen.dataset.exposure (see exposure_calibration)",
+    )
+    exposure_calibration: str = _value(
+        "red_blood_cells p95 peak 4.85x (median 4.26x, max 5.30x); adherent_cells "
+        "p95 peak 5.58x (median 2.52x, max 10.92x); 400 holograms per family, "
+        "seeds 90000-90399, 224 px",
+        "",
+        "Provenance of the calibrated exposures (hologen.dataset.exposure); "
+        "recalibrate after the image-size pilot",
+    )
+
+
+@dataclasses.dataclass
 class Dataset:
     """Size, randomness and noise configurations of the generated dataset."""
 
@@ -159,8 +219,16 @@ class Dataset:
             "source": "Any of: " + ", ".join(CONFIGURATION_NAMES),
         },
     )
+    objects: list[str] = dataclasses.field(
+        default_factory=lambda: ["red_blood_cells", "adherent_cells"],
+        metadata={
+            "unit": "",
+            "source": "Object families, any of: " + ", ".join(OBJECT_FAMILY_NAMES),
+        },
+    )
 
     def __post_init__(self) -> None:
+        # Check if any unknown configuration type is given.
         unknown = [c for c in self.configurations if c not in CONFIGURATION_NAMES]
         if unknown:
             raise ValueError(
@@ -171,10 +239,25 @@ class Dataset:
             raise ValueError("At least one configuration is required.")
         if len(set(self.configurations)) != len(self.configurations):
             raise ValueError("Configurations must not repeat.")
-        if self.total_samples < len(self.configurations):
+
+        # Check if any unknown object type is given.
+        unknown: list[str] = [o for o in self.objects if o not in OBJECT_FAMILY_NAMES]
+        if unknown:
+            raise ValueError(
+                f"Unknown object famil(y/ies) {unknown}; choose from "
+                f"{', '.join(OBJECT_FAMILY_NAMES)}."
+            )
+        if not self.objects:
+            raise ValueError("At least one object family is required.")
+        if len(set(self.objects)) != len(self.objects):
+            raise ValueError("Object families must not repeat.")
+
+        # Calculate the amount of groups.
+        groups: int = len(self.configurations) * len(self.objects)
+        if self.total_samples < groups:
             raise ValueError(
                 f"total_samples ({self.total_samples}) must be at least the number "
-                f"of configurations ({len(self.configurations)})."
+                f"of configuration and object family pairs ({groups})."
             )
 
 
@@ -186,6 +269,7 @@ class Recipe:
     geometry: Geometry = dataclasses.field(default_factory=Geometry)
     camera: Camera = dataclasses.field(default_factory=Camera)
     speckle: Speckle = dataclasses.field(default_factory=Speckle)
+    objects: Objects = dataclasses.field(default_factory=Objects)
 
     def hologram_config(self) -> HologramConfig:
         """The simulator settings of this recipe."""
@@ -235,9 +319,54 @@ class Recipe:
         }
         return {name: available[name] for name in self.dataset.configurations}
 
-    def samples_per_configuration(self) -> dict[str, int]:
-        """Split the samples equally; any remainder goes to the first ones."""
-        names = self.dataset.configurations
+    def object_families(self) -> dict[str, ObjectFamily]:
+        """Every object family with its placement and its calibrated exposure."""
+        objects: Objects = self.objects
+
+        def red_blood_cells(sim) -> int:
+            area = (sim.resolution * sim.pixel_size) ** 2
+            count = int(round(objects.red_blood_cell_density * area))
+            return add_red_blood_cells(sim, count) if count else 0
+
+        def adherent_cells(sim) -> int:
+            return add_adherent_cells(sim, coverage=objects.adherent_coverage)
+
+        def ellipses(sim) -> int:
+            add_random_cells(sim, num_cells=self.geometry.num_cells)
+            return self.geometry.num_cells
+
+        return {
+            "red_blood_cells": ObjectFamily(
+                "red_blood_cells",
+                red_blood_cells,
+                objects.red_blood_cells_background_electrons,
+            ),
+            "adherent_cells": ObjectFamily(
+                "adherent_cells",
+                adherent_cells,
+                objects.adherent_cells_background_electrons,
+            ),
+            "ellipses": ObjectFamily(
+                "ellipses", ellipses, self.camera.background_electrons
+            ),
+        }
+
+    def groups(self) -> list[tuple[str, NoiseConfig, ObjectFamily]]:
+        """
+        The dataset groups: every selected noise configuration with every
+        selected object family, named "configuration/family".
+        """
+        noises: dict[str, NoiseConfig] = self.noise_configurations()
+        families: dict[str, ObjectFamily] = self.object_families()
+        return [
+            (f"{config}/{family}", noises[config], families[family])
+            for config in self.dataset.configurations
+            for family in self.dataset.objects
+        ]
+
+    def samples_per_group(self) -> dict[str, int]:
+        """Split the samples equally; any remainder goes to the first groups."""
+        names: list[str] = [name for name, _, _ in self.groups()]
         share, remainder = divmod(self.dataset.total_samples, len(names))
         return {name: share + (i < remainder) for i, name in enumerate(names)}
 

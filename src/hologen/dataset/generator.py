@@ -6,6 +6,7 @@ with different noise configurations, making it easy for consumers to create
 custom datasets for machine learning or research purposes.
 """
 
+from typing import Literal
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ import pandas as pd
 
 from hologen.inline_simulator import InlineHologramSimulator
 from hologen.objects import add_random_cells
+from hologen.objects.families import ObjectFamily
 from hologen.utils import RandomNumberGenerator
 from hologen.noises.bit_depth import adc_gain
 from hologen.propagator import backwards_propagate
@@ -50,7 +52,7 @@ class DatasetGenerator:
         """
         self.config = config
         self.batch_size = batch_size
-        self._configs: dict[str, tuple[int, NoiseConfig]] = {}
+        self._configs: dict[str, tuple[int, NoiseConfig, ObjectFamily | None]] = {}
 
         # Accumulate samples for batch writing
         self._ground_truths: list[np.ndarray] = []
@@ -64,6 +66,7 @@ class DatasetGenerator:
         name: str,
         num_samples: int,
         noise: NoiseConfig,
+        objects: ObjectFamily | None = None,
     ) -> "DatasetGenerator":
         """
         Add a noise configuration to generate.
@@ -72,6 +75,8 @@ class DatasetGenerator:
             name: Unique name for this configuration (used in filenames)
             num_samples: Number of samples to generate for this configuration
             noise: Noise configuration. Must be provided.
+            objects: Object family (placement and exposure). None places the
+                first-version ellipses with the HologramConfig exposure.
 
         Returns:
             self for method chaining
@@ -84,7 +89,7 @@ class DatasetGenerator:
         if name in self._configs:
             raise ValueError(f"Configuration '{name}' already exists")
 
-        self._configs[name] = (num_samples, noise)
+        self._configs[name] = (num_samples, noise, objects)
         return self
 
     def generate(self, verbose: bool = True) -> dict[str, Any]:
@@ -109,7 +114,9 @@ class DatasetGenerator:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         examples: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
-        total_samples = sum(num_samples for num_samples, _ in self._configs.values())
+        total_samples: Literal[0] | int = sum(
+            entry[0] for entry in self._configs.values()
+        )
         global_idx = 0
 
         if verbose:
@@ -118,7 +125,7 @@ class DatasetGenerator:
 
         holo_config = self.config.hologram_config
 
-        for config_name, (num_samples, noise_config) in self._configs.items():
+        for config_name, (num_samples, noise_config, objects) in self._configs.items():
             if verbose:
                 noise_desc = self._describe_noise(noise_config)
                 print(
@@ -136,8 +143,8 @@ class DatasetGenerator:
                 )
 
                 # Generate hologram
-                ground_truth, hologram, reconstructed = self._generate_single_hologram(
-                    sim, noise_config
+                ground_truth, hologram, reconstructed, details = (
+                    self._generate_single_hologram(sim, noise_config, objects)
                 )
 
                 # Accumulate samples
@@ -149,6 +156,7 @@ class DatasetGenerator:
                         "config_name": config_name,
                         "sample_idx": i,
                         "global_idx": global_idx,
+                        **details,
                     }
                 )
 
@@ -190,7 +198,8 @@ class DatasetGenerator:
         self,
         sim: InlineHologramSimulator,
         noise: NoiseConfig,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        objects: ObjectFamily | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Generate a single hologram with the given noise configuration.
 
@@ -205,7 +214,15 @@ class DatasetGenerator:
 
         # Reset and create object
         sim.reset_object_field()
-        add_random_cells(sim, num_cells=holo_config.num_cells)
+        if objects is None:
+            add_random_cells(sim, num_cells=holo_config.num_cells)
+            placed: int = holo_config.num_cells
+            family: str = "ellipses"
+            background_electrons: float = holo_config.background_electrons
+        else:
+            placed = objects.place(sim)
+            family = objects.name
+            background_electrons = objects.background_electrons
 
         # Save ground truth object (before any noise or propagation)
         ground_truth = sim.object_field.copy()
@@ -219,14 +236,14 @@ class DatasetGenerator:
             dark_noise_mean=noise.dark_noise_mean if noise.dark else 0.0,
             read_noise_sigma=noise.read_noise_sigma if noise.read else 0.0,
             bit_depth=holo_config.bit_depth,
-            background_electrons=holo_config.background_electrons,
+            background_electrons=background_electrons,
             saturation_electrons=holo_config.saturation_electrons,
         )
 
         # Reconstruct complex field from intensity (realistic back-propagation)
         # In real inline holography, we only have intensity and no phase information
         # The hologram is in digital numbers; the background is K * background_e.
-        background_dn: float = holo_config.background_electrons * adc_gain(
+        background_dn: float = background_electrons * adc_gain(
             holo_config.bit_depth, holo_config.saturation_electrons
         )
         amplitude: np.ndarray = np.sqrt(hologram_intensity / background_dn)
@@ -242,7 +259,17 @@ class DatasetGenerator:
             sim.resolution,
         )
 
-        return ground_truth, hologram_intensity, reconstructed
+        # Pixels at full scale: the exposure lets a few percent of holograms clip
+        # at the foci of strongly refracting cells (hologen.dataset.exposure).
+        details: dict[str, Any] = {
+            "object_family": family,
+            "objects_placed": placed,
+            "background_electrons": background_electrons,
+            "clipped_fraction": float(
+                np.mean(hologram_intensity >= 2**holo_config.bit_depth - 1)
+            ),
+        }
+        return ground_truth, hologram_intensity, reconstructed, details
 
     def _write_batch(self) -> None:
         """
@@ -318,6 +345,18 @@ class DatasetGenerator:
         }
         pd.DataFrame(rec_data).to_parquet(
             output_dir / f"reconstructed_{batch_num:04d}.parquet",
+            compression="snappy",
+            index=False,
+        )
+
+        # One row per hologram: object family, exposure and clipping.
+        pd.DataFrame(
+            [
+                {"sample_id": sid, **meta}
+                for sid, meta in zip(sample_ids, self._metadata)
+            ]
+        ).to_parquet(
+            output_dir / f"metadata_{batch_num:04d}.parquet",
             compression="snappy",
             index=False,
         )

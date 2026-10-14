@@ -80,6 +80,9 @@ def test_partial_file_keeps_the_other_defaults(tmp_path: pathlib.Path) -> None:
         ({"dataset": {"configurations": []}}, "At least one"),
         ({"dataset": {"configurations": ["camera", "camera"]}}, "must not repeat"),
         ({"dataset": {"total_samples": 2}}, "at least the number"),
+        ({"dataset": {"objects": ["neurons"]}}, "Unknown object"),
+        ({"dataset": {"objects": []}}, "At least one object"),
+        ({"dataset": {"objects": ["ellipses", "ellipses"]}}, "must not repeat"),
     ],
 )
 def test_invalid_recipes_are_rejected(data: dict, message: str) -> None:
@@ -96,11 +99,45 @@ def test_samples_are_split_with_the_remainder_first() -> None:
             }
         }
     )
-    assert recipe.samples_per_configuration() == {
-        "ideal": 4,
-        "camera": 3,
-        "camera_led_speckle": 3,
+    assert recipe.samples_per_group() == {
+        "ideal/red_blood_cells": 2,
+        "ideal/adherent_cells": 2,
+        "camera/red_blood_cells": 2,
+        "camera/adherent_cells": 2,
+        "camera_led_speckle/red_blood_cells": 1,
+        "camera_led_speckle/adherent_cells": 1,
     }
+
+
+def test_groups_pair_every_configuration_with_every_family() -> None:
+    recipe = recipe_from_dict(
+        {
+            "dataset": {
+                "configurations": ["camera"],
+                "objects": ["ellipses", "red_blood_cells"],
+            }
+        }
+    )
+    names = [(name, family.name) for name, _, family in recipe.groups()]
+    assert names == [
+        ("camera/ellipses", "ellipses"),
+        ("camera/red_blood_cells", "red_blood_cells"),
+    ]
+
+
+def test_each_family_has_its_own_exposure() -> None:
+    recipe = recipe_from_dict(
+        {"objects": {"red_blood_cells_background_electrons": 1234.0}}
+    )
+    families = recipe.object_families()
+    assert families["red_blood_cells"].background_electrons == 1234.0
+    assert (
+        families["adherent_cells"].background_electrons
+        == recipe.objects.adherent_cells_background_electrons
+    )
+    assert (
+        families["ellipses"].background_electrons == recipe.camera.background_electrons
+    )
 
 
 def test_configuration_subset_keeps_the_order_given() -> None:

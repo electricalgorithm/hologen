@@ -6,6 +6,7 @@ Command-line interface of hologen.
     hologen explore <noise> [OPTIONS]   open an interactive noise explorer
 """
 
+from typing import Any
 import dataclasses
 import pathlib
 from typing import Annotated
@@ -14,6 +15,7 @@ import typer
 
 from hologen.dataset.recipe import (
     CONFIGURATION_NAMES,
+    OBJECT_FAMILY_NAMES,
     Recipe,
     default_recipe,
     load_recipe,
@@ -41,20 +43,24 @@ def build_recipe(
     resolution: int | None,
     configs: list[str] | None,
     batch_size: int | None,
+    objects: list[str] | None = None,
 ) -> Recipe:
     """Read the recipe file (or the defaults) and apply the command-line flags."""
-    recipe = load_recipe(recipe_file) if recipe_file else default_recipe()
-    dataset_changes = {
+    recipe: Recipe = load_recipe(recipe_file) if recipe_file else default_recipe()
+    dataset_changes: dict[str, int | list[str]] = {
         key: value
         for key, value in {
             "total_samples": samples,
             "seed": seed,
             "configurations": configs,
+            "objects": objects,
             "batch_size": batch_size,
         }.items()
         if value is not None
     }
-    geometry_changes = {} if resolution is None else {"resolution": resolution}
+    geometry_changes: dict[str, int] | dict[Any, Any] = (
+        {} if resolution is None else {"resolution": resolution}
+    )
     return dataclasses.replace(
         recipe,
         dataset=dataclasses.replace(recipe.dataset, **dataset_changes),
@@ -110,6 +116,18 @@ def generate(
             + ". (recipe default: all)",
         ),
     ] = None,
+    objects: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--object",
+            "-O",
+            help="Object family to include; repeat for several. Choices: "
+            + ", ".join(OBJECT_FAMILY_NAMES)
+            + ". (recipe default: "
+            + ", ".join(DEFAULTS.dataset.objects)
+            + ")",
+        ),
+    ] = None,
     batch_size: Annotated[
         int | None,
         typer.Option(
@@ -127,9 +145,43 @@ def generate(
         typer.Option(help="Allow writing into a folder that already has a dataset."),
     ] = False,
 ) -> None:
-    """Generate a hologram dataset and the recipe it was made from."""
+    """Generate a hologram dataset and the recipe it was made from.
+
+    The dataset follows a recipe. Without --recipe it is the default recipe with
+    the cited physical values, and the options below change parts of it. Every
+    noise configuration is combined with every object family, and the holograms
+    are split equally over these groups.
+
+    The output folder receives hologram_XXXX.parquet (recorded intensity in
+    digital numbers), ground_truth_XXXX.parquet (the complex object field),
+    reconstructed_XXXX.parquet (the back-propagated field before any network)
+    and metadata_XXXX.parquet (object family, objects placed, exposure and
+    clipped pixels of each hologram), one set per batch. It also receives
+    recipe.toml, the exact recipe used, and dataset_examples.png unless
+    --no-visualization is given.
+
+    \f
+    Args:
+        output (pathlib.Path): Folder for the dataset files.
+        recipe (pathlib.Path | None): TOML recipe; the default recipe if None.
+        samples (int | None): Total number of holograms, overriding the recipe.
+        seed (int | None): Base random seed, overriding the recipe.
+        resolution (int | None): Hologram size in pixels, overriding the recipe.
+        config (list[str] | None): Noise configurations, overriding the recipe.
+        objects (list[str] | None): Object families, overriding the recipe.
+        batch_size (int | None): Holograms per parquet file, overriding the recipe.
+        visualization (bool): Whether to save dataset_examples.png.
+        overwrite (bool): Whether to write into a folder that has a dataset.
+
+    Raises:
+        typer.Exit: With code 2 if the recipe or an option is invalid, and with
+            code 1 if the output folder already contains a dataset and
+            overwrite is False.
+    """
     try:
-        chosen = build_recipe(recipe, samples, seed, resolution, config, batch_size)
+        chosen: Recipe = build_recipe(
+            recipe, samples, seed, resolution, config, batch_size, objects
+        )
     except ValueError as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
@@ -154,9 +206,11 @@ def generate(
         ),
         batch_size=chosen.dataset.batch_size,
     )
-    counts = chosen.samples_per_configuration()
-    for name, noise in chosen.noise_configurations().items():
-        generator.add_config(name, num_samples=counts[name], noise=noise)
+    counts: dict[str, int] = chosen.samples_per_group()
+    for name, noise, family in chosen.groups():
+        generator.add_config(
+            name, num_samples=counts[name], noise=noise, objects=family
+        )
     generator.generate()
 
     # Keep the exact recipe next to the data, so the dataset can be reproduced.
@@ -173,7 +227,7 @@ def recipe_command(
     ] = None,
 ) -> None:
     """Write the default recipe, with the unit and source of every value."""
-    text = recipe_to_toml(default_recipe())
+    text: str = recipe_to_toml(default_recipe())
     if output is None:
         typer.echo(text, nl=False)
         return

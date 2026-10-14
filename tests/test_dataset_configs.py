@@ -85,8 +85,10 @@ def test_documented_configurations_are_the_ones_used() -> None:
 
 def test_samples_are_split_equally() -> None:
     """Each configuration gets the same share and no sample is lost to rounding."""
-    counts = RECIPE.samples_per_configuration()
-    assert set(counts.values()) == {RECIPE.dataset.total_samples // len(CONFIGURATIONS)}
+    counts: dict[str, int] = RECIPE.samples_per_group()
+    groups: int = len(CONFIGURATIONS) * len(RECIPE.dataset.objects)
+    assert len(counts) == groups
+    assert set(counts.values()) == {RECIPE.dataset.total_samples // groups}
     assert sum(counts.values()) == RECIPE.dataset.total_samples
 
 

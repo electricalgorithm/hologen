@@ -3,6 +3,7 @@ Tests for the dataset generator: that every noise configuration reaches the
 simulator unchanged, and that the stored reconstruction has the physical scale.
 """
 
+from pandas.core.frame import DataFrame
 import pathlib
 
 import numpy
@@ -18,9 +19,12 @@ SAMPLES_PER_CONFIGURATION: int = 2
 
 
 def tiny_recipe() -> Recipe:
-    """The default recipe on a 64 x 64 grid, small enough for a test."""
+    """Red blood cells on a 128 x 128 grid (31 um, about 4 cells), small enough for a test."""
     return recipe_from_dict(
-        {"geometry": {"resolution": 64}, "dataset": {"total_samples": 8}}
+        {
+            "geometry": {"resolution": 128},
+            "dataset": {"total_samples": 8, "objects": ["red_blood_cells"]},
+        }
     )
 
 
@@ -34,9 +38,11 @@ def generate(recipe: Recipe, output: pathlib.Path) -> None:
         ),
         batch_size=recipe.dataset.batch_size,
     )
-    counts = recipe.samples_per_configuration()
-    for name, noise in recipe.noise_configurations().items():
-        generator.add_config(name, num_samples=counts[name], noise=noise)
+    counts: dict[str, int] = recipe.samples_per_group()
+    for name, noise, family in recipe.groups():
+        generator.add_config(
+            name, num_samples=counts[name], noise=noise, objects=family
+        )
     generator.generate(verbose=False)
 
 
@@ -85,7 +91,10 @@ def test_each_configuration_reaches_the_simulator(
             )
             assert got == expected[name], name
             assert call["bit_depth"] == camera.bit_depth
-            assert call["background_electrons"] == camera.background_electrons
+            assert (
+                call["background_electrons"]
+                == recipe.objects.red_blood_cells_background_electrons
+            )
             assert call["saturation_electrons"] == camera.saturation_electrons
             if call["speckle_contrast"]:
                 assert call["speckle_grain_size"] == speckle.grain_size
@@ -101,29 +110,60 @@ def test_stored_data_has_the_physical_scale(tmp_path: pathlib.Path) -> None:
     generate(recipe, tmp_path)
 
     config = recipe.hologram_config()
-    background_dn = config.background_electrons * adc_gain(
-        config.bit_depth, config.saturation_electrons
+    # Each object family is recorded with its own exposure.
+    background_dn: float = (
+        recipe.objects.red_blood_cells_background_electrons
+        * adc_gain(config.bit_depth, config.saturation_electrons)
     )
     names = pandas.read_parquet(
         tmp_path / "hologram_0000.parquet", columns=["sample_id", "config_name"]
     ).drop_duplicates()
     assert names["config_name"].value_counts().to_dict() == dict.fromkeys(
-        recipe.dataset.configurations, SAMPLES_PER_CONFIGURATION
+        recipe.samples_per_group(), SAMPLES_PER_CONFIGURATION
     )
 
-    holograms = load_samples_from_parquet(tmp_path, "hologram", resolution=64)
-    reconstructed = load_samples_from_parquet(tmp_path, "reconstructed", resolution=64)
-    truths = load_samples_from_parquet(tmp_path, "ground_truth", resolution=64)
+    size: int = config.resolution
+    holograms: dict[int, numpy.ndarray] = load_samples_from_parquet(
+        tmp_path, "hologram", resolution=size
+    )
+    reconstructed: dict[int, numpy.ndarray] = load_samples_from_parquet(
+        tmp_path, "reconstructed", resolution=size
+    )
+    truths: dict[int, numpy.ndarray] = load_samples_from_parquet(
+        tmp_path, "ground_truth", resolution=size
+    )
     for sample_id, hologram in holograms.items():
         # Propagation conserves power, so the mean recorded intensity is the
         # background times the mean transmission |O|^2 of this sample's object.
         transmission = numpy.mean(numpy.abs(truths[sample_id]) ** 2)
         assert hologram.mean() == pytest.approx(background_dn * transmission, rel=0.01)
-        assert hologram.max() < 2**config.bit_depth - 1
         # Back-propagation conserves power too, so the reconstruction of sqrt(H)
         # has the same mean |.|^2 as the object when H is normalised correctly.
         power = numpy.mean(numpy.abs(reconstructed[sample_id]) ** 2)
         assert power == pytest.approx(transmission, rel=0.01)
+
+
+def test_metadata_records_family_exposure_and_clipping(tmp_path: pathlib.Path) -> None:
+    """One metadata row per hologram, consistent with the stored images."""
+    recipe: Recipe = tiny_recipe()
+    generate(recipe, tmp_path)
+    metadata: DataFrame = pandas.read_parquet(tmp_path / "metadata_0000.parquet")
+    size: int = recipe.geometry.resolution
+    holograms: dict[int, numpy.ndarray] = load_samples_from_parquet(
+        tmp_path, "hologram", resolution=size
+    )
+
+    assert len(metadata) == recipe.dataset.total_samples
+    assert set(metadata["object_family"]) == {"red_blood_cells"}
+    assert (metadata["objects_placed"] > 0).all()
+    assert (
+        metadata["background_electrons"]
+        == recipe.objects.red_blood_cells_background_electrons
+    ).all()
+    full_scale = 2**recipe.camera.bit_depth - 1
+    for row in metadata.itertuples():
+        expected = numpy.mean(holograms[row.sample_id] >= full_scale)
+        assert row.clipped_fraction == pytest.approx(expected)
 
 
 def test_default_recipe_is_unchanged_by_the_tiny_one() -> None:
