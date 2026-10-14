@@ -62,7 +62,20 @@ class AdherentCellStatistics:
 def sample_cell_shape(
     rng: numpy.random.Generator, stats: AdherentCellStatistics
 ) -> tuple[float, float, float]:
-    """Draw (equivalent diameter, aspect ratio, peak OPD) for one cell."""
+    """
+    Draw the size, elongation and peak optical path difference of one cell.
+
+    Size and peak OPD come jointly from the measured lognormal distributions,
+    redrawn until both fall in their measured 5-95 percent ranges.
+
+    Args:
+        rng (numpy.random.Generator): Random number generator.
+        stats (AdherentCellStatistics): Measured cell statistics.
+
+    Returns:
+        tuple[float, float, float]: Equivalent diameter in um, aspect ratio
+            (at least 1) and peak OPD in um.
+    """
     covariance = [
         [
             stats.diameter_log_sd**2,
@@ -102,9 +115,25 @@ def cell_opd(
     stats: AdherentCellStatistics,
 ) -> numpy.ndarray:
     """
-    OPD map (um) of one cell on the full grid, scaled so its 95th percentile is
-    peak_opd. The cell is computed only inside its bounding window, which keeps
-    dense cultures on large grids fast.
+    Compute the optical path difference map of one cell on the full grid.
+
+    The map is scaled so that its 95th percentile inside the cell is peak_opd.
+    The cell is computed only inside its bounding window, which keeps dense
+    cultures on large grids fast.
+
+    Args:
+        simulator (InlineHologramSimulator): Simulator whose grid is used.
+        centre (tuple[float, float]): Cell centre (x, y), in um.
+        diameter (float): Equivalent diameter, in um.
+        aspect (float): Ratio of the long to the short axis.
+        peak_opd (float): 95th percentile of the OPD inside the cell, in um.
+        rng (numpy.random.Generator): Random number generator for the
+            orientation, outline, dome exponent, nucleus position and texture.
+        stats (AdherentCellStatistics): Measured statistics and design choices.
+
+    Returns:
+        numpy.ndarray: OPD in um, zero outside the cell, shape (resolution,
+            resolution).
     """
     semi_major = diameter / 2 * numpy.sqrt(aspect)
     semi_minor = diameter / 2 / numpy.sqrt(aspect)
@@ -166,9 +195,20 @@ def add_adherent_cells(
     max_attempts: int = 200,
 ) -> int:
     """
-    Fill the field with adherent cells until they cover `coverage` of it
-    (default: the measured median), each fully inside the field and overlapping
-    others by at most max_overlap of its area, and apply their phase.
+    Fill the field with adherent cells and apply their phase.
+
+    Cells are added until they cover the requested fraction of the field. Each
+    lies fully inside the field and overlaps the others by at most max_overlap
+    of its area.
+
+    Args:
+        simulator (InlineHologramSimulator): Simulator to add the cells to.
+        coverage (float | None): Fraction of the field to cover, or None for
+            the measured median.
+        stats (AdherentCellStatistics): Measured statistics and design choices.
+        max_overlap (float): Largest fraction of a cell's area that may overlap
+            other cells.
+        max_attempts (int): Placement attempts before giving up.
 
     Returns:
         int: The number of cells placed.

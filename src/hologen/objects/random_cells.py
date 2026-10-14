@@ -1,6 +1,4 @@
-"""
-This module implements a function to generate random cells in an field.
-"""
+"""Random elliptical phase objects, the first-version "cells" kept as a baseline."""
 
 from numpy import cos as npCos
 from numpy import sin as npSin
@@ -16,7 +14,18 @@ def add_random_cells(
     radius_range: tuple[int, int] = (5, 15),
     phase_max: float = 0.5,
 ) -> None:
-    """Generates random cell-like structures."""
+    """
+    Add random ellipses with a uniform phase and amplitude to the field.
+
+    Centres are drawn anywhere in the field, so ellipses may overlap or reach the
+    border.
+
+    Args:
+        hologram (InlineHologramSimulator): Simulator to add the ellipses to.
+        num_cells (int): Number of ellipses.
+        radius_range (tuple[int, int]): Range of the semi-axes, in pixels.
+        phase_max (float): Largest phase shift, in radians; the smallest is 0.1.
+    """
     rng: npGenerator = RandomNumberGenerator()
 
     for _ in range(num_cells):

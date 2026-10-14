@@ -42,8 +42,18 @@ def evans_fung_thickness(
     radial_distance: numpy.ndarray, optics: RedBloodCellOptics, scale: float = 1.0
 ) -> numpy.ndarray:
     """
-    Thickness (um) of a red blood cell at a distance from its centre; zero
-    outside the cell. A scale other than 1 enlarges the whole cell uniformly.
+    Compute the thickness of a red blood cell at a distance from its centre.
+
+    A scale other than 1 enlarges the whole cell uniformly.
+
+    Args:
+        radial_distance (numpy.ndarray): Distance from the cell centre, in um.
+        optics (RedBloodCellOptics): Shape coefficients of the cell.
+        scale (float): Size of the cell relative to the Evans-Fung cell.
+
+    Returns:
+        numpy.ndarray: Thickness in um, zero outside the cell, same shape as
+            radial_distance.
     """
     u = (radial_distance / (optics.radius * scale)) ** 2
     inside = u < 1.0
@@ -62,8 +72,17 @@ def add_red_blood_cells(
     max_attempts: int = 1000,
 ) -> int:
     """
-    Place red blood cells flat in the object plane, fully inside the field of
-    view and without overlap, and apply their transmission.
+    Place red blood cells in the field and apply their transmission.
+
+    The cells lie flat in the object plane, fully inside the field of view and
+    without overlap.
+
+    Args:
+        simulator (InlineHologramSimulator): Simulator to add the cells to.
+        num_cells (int): Number of cells requested.
+        optics (RedBloodCellOptics): Shape, refractive index and absorption of
+            the cells.
+        max_attempts (int): Placement attempts before giving up.
 
     Returns:
         int: The number of cells placed (fewer than requested if the field is

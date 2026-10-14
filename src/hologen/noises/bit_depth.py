@@ -14,8 +14,9 @@ import numpy
 
 def adc_gain(bit_depth: int, saturation_electrons: float) -> float:
     """
-    Return the system gain K (DN per electron) that maps the saturation capacity
-    to the largest digital value.
+    Return the system gain K, in DN per electron, of a k-bit ADC.
+
+    The gain maps the saturation capacity to the largest digital value.
 
     Args:
         bit_depth (int): ADC resolution in bits.

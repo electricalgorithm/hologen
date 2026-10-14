@@ -1,3 +1,5 @@
+"""Speckle of the light source and the shot, dark, read and ADC noise of the camera."""
+
 from .speckle import add_speckle_noise
 from .dark_current import add_dark_current_noise
 from .shot import add_shot_noise

@@ -1,3 +1,5 @@
+"""The in-line hologram simulator and the default exposure of the camera."""
+
 import numpy as np
 
 import hologen.utils as utils
@@ -20,6 +22,14 @@ DEFAULT_BACKGROUND_ELECTRONS: float = 5400.0
 
 
 class InlineHologramSimulator:
+    """
+    Simulator of an in-line (Gabor) hologram of a thin object.
+
+    The object plane starts as a clear slide. Objects multiply its complex
+    field, and generate_hologram propagates the field to the detector and
+    records its intensity with the chosen noise.
+    """
+
     def __init__(
         self,
         resolution: int = 512,
@@ -71,15 +81,29 @@ class InlineHologramSimulator:
     def add_object(
         self, mask: np.ndarray, amplitude: float = 1.0, phase_shift: float = 0.0
     ) -> None:
-        """Adds an object to the current field based on a boolean mask."""
+        """
+        Add an object with a uniform transmission inside a mask.
+
+        Args:
+            mask (np.ndarray): Boolean map of the object, shape (resolution,
+                resolution).
+            amplitude (float): Amplitude transmission inside the mask.
+            phase_shift (float): Phase shift inside the mask, in radians.
+        """
         self.object_field[mask] *= amplitude
         self.object_field[mask] *= np.exp(1j * phase_shift)
 
     def apply_transmission(self, amplitude: np.ndarray, phase: np.ndarray) -> None:
         """
-        Multiply the object field by a transmission map amplitude * exp(i phase),
-        e.g. a cell with a continuous thickness profile. Overlapping objects
-        multiply their transmissions, so their phases add.
+        Multiply the object field by a transmission map amplitude * exp(i phase).
+
+        This adds an object with a continuous profile, such as a cell. Overlapping
+        objects multiply their transmissions, so their phases add.
+
+        Args:
+            amplitude (np.ndarray): Amplitude transmission, shape (resolution,
+                resolution) or broadcastable to it.
+            phase (np.ndarray): Phase shift in radians, same shape as amplitude.
         """
         self.object_field = self.object_field * (amplitude * np.exp(1j * phase))
 

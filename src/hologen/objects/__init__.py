@@ -1,3 +1,5 @@
+"""Red blood cells, adherent cells and ellipses to place in the object plane."""
+
 from .adherent_cells import (
     AdherentCellStatistics,
     add_adherent_cells,
