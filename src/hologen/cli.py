@@ -3,6 +3,8 @@ Command-line interface of hologen.
 
     hologen generate [OPTIONS]          generate a dataset from the cited recipe
     hologen recipe [--output FILE]      write the default recipe as TOML
+    hologen calibrate [OPTIONS]         calibrate the exposure of each object family
+    hologen measure [OPTIONS]           measure noise, normalisation and clipping
     hologen explore <noise> [OPTIONS]   open an interactive noise explorer
 """
 
@@ -13,6 +15,15 @@ from typing import Annotated
 
 import typer
 
+from hologen.dataset.measure import (
+    ExposureCalibration,
+    calibrate_families,
+    calibration_table,
+    exposures_are_current,
+    groups_table,
+    measure_groups,
+    write_calibration,
+)
 from hologen.dataset.recipe import (
     CONFIGURATION_NAMES,
     OBJECT_FAMILY_NAMES,
@@ -194,6 +205,13 @@ def generate(
         )
         raise typer.Exit(code=1)
 
+    if not exposures_are_current(chosen):
+        typer.echo(
+            "Warning: the exposures in this recipe were calibrated for different "
+            "settings (geometry, speckle, saturation or objects changed). Run "
+            "hologen calibrate to recalibrate them.",
+            err=True,
+        )
     # Imported here so that `hologen --help` stays fast.
     from hologen.dataset import DatasetConfig, DatasetGenerator
 
@@ -233,6 +251,150 @@ def recipe_command(
         return
     output.write_text(text)
     typer.echo(f"Recipe written to {output}")
+
+
+RecipeFile = Annotated[
+    pathlib.Path | None,
+    typer.Option(
+        "--recipe",
+        help="TOML recipe (see `hologen recipe`); the default recipe if omitted.",
+        exists=True,
+        dir_okay=False,
+    ),
+]
+
+
+def load_or_default(recipe_file: pathlib.Path | None) -> Recipe:
+    """
+    Load a recipe file, or the default recipe, and turn errors into exit code 2.
+
+    Args:
+        recipe_file (pathlib.Path | None): Recipe file, or None for the default.
+
+    Returns:
+        Recipe: The loaded recipe.
+
+    Raises:
+        typer.Exit: With code 2 if the recipe file is invalid.
+    """
+    try:
+        return load_recipe(recipe_file) if recipe_file else default_recipe()
+    except ValueError as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+
+@app.command()
+def calibrate(
+    recipe: RecipeFile = None,
+    holograms: Annotated[
+        int,
+        typer.Option(help="Noise-free holograms per object family.", min=1),
+    ] = 400,
+    seed: Annotated[
+        int,
+        typer.Option(help="Seed of the first hologram; keep it apart from datasets."),
+    ] = 90000,
+    write: Annotated[
+        bool,
+        typer.Option(
+            help="Write the exposures, their provenance and the fingerprint into "
+            "the --recipe file."
+        ),
+    ] = False,
+) -> None:
+    """Calibrate the background exposure of every object family.
+
+    For each object family, noise-free holograms with laser speckle are simulated
+    and their brightest point is measured. The exposure is the largest background
+    at which the recipe's exposure percentile of these holograms stays below
+    saturation. The results are printed as a Markdown table.
+
+    With --write, the exposures go into the recipe file together with their
+    provenance and a fingerprint of the settings they were calibrated for. The
+    default recipe keeps its exposures as cited constants in the code, so
+    --write needs --recipe.
+
+    \f
+    Args:
+        recipe (pathlib.Path | None): Recipe file; the default recipe if None.
+        holograms (int): Noise-free holograms per object family.
+        seed (int): Seed of the first hologram of each family.
+        write (bool): Whether to write the results into the recipe file.
+
+    Raises:
+        typer.Exit: With code 2 if the recipe is invalid or --write is given
+            without --recipe.
+    """
+    if write and recipe is None:
+        typer.echo(
+            "Error: --write needs --recipe. The default recipe's exposures are cited "
+            "constants in hologen/dataset/recipe.py; update them there.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    chosen: Recipe = load_or_default(recipe)
+    typer.echo(
+        f"Exposure calibration: {holograms} noise-free laser-speckle holograms per "
+        f"family, seeds {seed}-{seed + holograms - 1}, {chosen.geometry.resolution} "
+        f"px, percentile {chosen.objects.exposure_percentile:g}, saturation "
+        f"{chosen.camera.saturation_electrons:,.0f} e-\n"
+    )
+    calibrations: list[ExposureCalibration] = calibrate_families(
+        chosen, holograms, seed
+    )
+    typer.echo(calibration_table(calibrations), nl=False)
+    if write:
+        write_calibration(recipe, calibrations)
+        typer.echo(f"\nExposures written to {recipe}")
+
+
+@app.command()
+def measure(
+    recipe: RecipeFile = None,
+    holograms: Annotated[int, typer.Option(help="Holograms per group.", min=1)] = 50,
+    seed: Annotated[
+        int,
+        typer.Option(help="Seed of the first hologram; keep it apart from datasets."),
+    ] = 50000,
+    output: Annotated[
+        pathlib.Path | None,
+        typer.Option("--output", "-o", help="Also save the table to this file."),
+    ] = None,
+) -> None:
+    """Measure noise, normalisation and clipping of every group of a recipe.
+
+    Every group (noise configuration x object family) is simulated on the same
+    seeds and recorded with the exposure of its object family. The Markdown
+    table reports the noise relative to the background, how far normalising by
+    the mean or the median moves the background, and how often holograms clip.
+    Calibrate the exposures first, because the results depend on them.
+
+    \f
+    Args:
+        recipe (pathlib.Path | None): Recipe file; the default recipe if None.
+        holograms (int): Holograms per group.
+        seed (int): Seed of the first hologram of each group.
+        output (pathlib.Path | None): File to save the table to.
+
+    Raises:
+        typer.Exit: With code 2 if the recipe is invalid.
+    """
+    chosen: Recipe = load_or_default(recipe)
+    if not exposures_are_current(chosen):
+        typer.echo(
+            "Warning: the exposures were calibrated for different settings; run "
+            "hologen calibrate first.",
+            err=True,
+        )
+    header: str = (
+        f"{holograms} holograms per group, seeds {seed}-{seed + holograms - 1}\n\n"
+    )
+    table: str = groups_table(measure_groups(chosen, holograms, seed))
+    typer.echo(header + table, nl=False)
+    if output is not None:
+        output.write_text(header + table)
+        typer.echo(f"\nTable saved to {output}")
 
 
 Image = Annotated[

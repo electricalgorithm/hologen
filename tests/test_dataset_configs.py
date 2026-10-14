@@ -18,7 +18,7 @@ RECIPE = default_recipe()
 CONFIGURATIONS: dict[str, NoiseConfig] = RECIPE.noise_configurations()
 
 # rms deviation from the ideal hologram, in % of the background, as documented in
-# Recipe.noise_configurations() and measured by scripts/measure_dataset.py.
+# Recipe.noise_configurations() and measured with hologen measure.
 DOCUMENTED_NOISE: dict[str, float] = {
     "ideal": 0.02,
     "camera": 1.4,

@@ -14,7 +14,7 @@ DEFAULT_SATURATION_ELECTRONS: float = 14837.0
 # the largest background for which the brightest fringe (peak x background) plus
 # 3 sigma of shot noise stays below saturation. PROVISIONAL: the first-version
 # ellipses in the magnified geometry peak at 2.66x the background
-# (scripts/measure_dataset.py), so 2.66 * 5400 + 3 sqrt(2.66 * 5400) = 14.5 ke-;
+# (hologen measure), so 2.66 * 5400 + 3 sqrt(2.66 * 5400) = 14.5 ke-;
 # re-derive once the HOLO-002 cell objects exist.
 DEFAULT_BACKGROUND_ELECTRONS: float = 5400.0
 

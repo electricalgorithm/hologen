@@ -13,7 +13,13 @@ import pytest
 from typer.testing import CliRunner
 
 from hologen.cli import app
-from hologen.dataset.recipe import default_recipe, recipe_from_dict
+from hologen.dataset.measure import exposures_are_current
+from hologen.dataset.recipe import (
+    default_recipe,
+    load_recipe,
+    recipe_from_dict,
+    recipe_to_toml,
+)
 from hologen.utils import load_samples_from_parquet
 
 matplotlib.use("Agg")
@@ -143,6 +149,104 @@ def test_existing_dataset_is_not_overwritten_by_accident(
         ).exit_code
         == 0
     )
+
+
+# A recipe small enough to calibrate in a test: red blood cells on 64 x 64 pixels.
+SMALL: dict[str, dict[str, object]] = {
+    "geometry": {"resolution": 64},
+    "dataset": {"objects": ["red_blood_cells"], "configurations": ["ideal", "camera"]},
+}
+
+
+def small_recipe_file(tmp_path: pathlib.Path) -> pathlib.Path:
+    """
+    Write the small recipe to a file.
+
+    Args:
+        tmp_path (pathlib.Path): Folder for the file.
+
+    Returns:
+        pathlib.Path: The recipe file.
+    """
+    path: pathlib.Path = tmp_path / "small.toml"
+    path.write_text(recipe_to_toml(recipe_from_dict(SMALL)))
+    return path
+
+
+def test_calibrate_prints_a_table_and_leaves_the_file_alone(
+    tmp_path: pathlib.Path,
+) -> None:
+    path: pathlib.Path = small_recipe_file(tmp_path)
+    before: str = path.read_text()
+    result: Result = runner.invoke(
+        app, ["calibrate", "--recipe", str(path), "--holograms", "5"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "| red_blood_cells |" in result.stdout
+    assert "seeds 90000-90004, 64 px" in result.stdout
+    assert path.read_text() == before
+
+
+def test_calibrate_write_makes_the_exposures_current(tmp_path: pathlib.Path) -> None:
+    path: pathlib.Path = small_recipe_file(tmp_path)
+    assert not exposures_are_current(load_recipe(path))
+
+    result: Result = runner.invoke(
+        app, ["calibrate", "--recipe", str(path), "--holograms", "5", "--write"]
+    )
+    assert result.exit_code == 0, result.output
+    assert exposures_are_current(load_recipe(path))
+
+    output: pathlib.Path = tmp_path / "data"
+    generated: Result = runner.invoke(
+        app,
+        [
+            "generate",
+            "-o",
+            str(output),
+            "--recipe",
+            str(path),
+            "--samples",
+            "2",
+            "--no-visualization",
+        ],
+    )
+    assert generated.exit_code == 0, generated.output
+    assert "Warning" not in generated.output
+
+
+def test_calibrate_write_needs_a_recipe_file() -> None:
+    result: Result = runner.invoke(app, ["calibrate", "--write"])
+    assert result.exit_code == 2
+    assert "--write needs --recipe" in result.output
+
+
+def test_generate_warns_about_stale_exposures(tmp_path: pathlib.Path) -> None:
+    result: Result = runner.invoke(app, ["generate", "-o", str(tmp_path / "d"), *TINY])
+    assert result.exit_code == 0, result.output
+    assert "hologen calibrate" in result.output  # TINY changes the resolution
+
+
+def test_measure_prints_and_saves_the_table(tmp_path: pathlib.Path) -> None:
+    path: pathlib.Path = small_recipe_file(tmp_path)
+    table: pathlib.Path = tmp_path / "groups.md"
+    result: Result = runner.invoke(
+        app,
+        ["measure", "--recipe", str(path), "--holograms", "2", "-o", str(table)],
+    )
+    assert result.exit_code == 0, result.output
+    assert "run hologen calibrate first" in result.output
+    assert "| ideal/red_blood_cells |" in result.stdout
+    assert "| camera/red_blood_cells |" in table.read_text()
+
+
+def test_invalid_recipe_file_is_a_clear_error(tmp_path: pathlib.Path) -> None:
+    path: pathlib.Path = tmp_path / "bad.toml"
+    path.write_text("[camera]\nunknown_key = 1\n")
+    for command in ("calibrate", "measure"):
+        result: Result = runner.invoke(app, [command, "--recipe", str(path)])
+        assert result.exit_code == 2
+        assert "Error" in result.output
 
 
 @pytest.mark.parametrize(

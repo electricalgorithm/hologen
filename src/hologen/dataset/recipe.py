@@ -162,8 +162,9 @@ class Objects:
     Each family has its own exposure, the way an operator sets one per type of
     sample. It is the largest background for which `exposure_percentile`
     percent of the family's holograms stay unsaturated (hologen.dataset.exposure).
-    Recalibrate them whenever the geometry, speckle, saturation capacity or
-    object settings change.
+    Run `hologen calibrate` whenever the geometry, speckle, saturation capacity
+    or object settings change. For a recipe file, `hologen calibrate --write`
+    updates the exposures, their provenance and the fingerprint below.
     """
 
     red_blood_cell_density: float = _value(
@@ -186,20 +187,26 @@ class Objects:
     red_blood_cells_background_electrons: float = _value(
         2982.0,
         "e- per pixel",
-        "Calibrated with hologen.dataset.exposure (see exposure_calibration)",
+        "Calibrated with hologen calibrate (see exposure_calibration)",
     )
     adherent_cells_background_electrons: float = _value(
         2593.0,
         "e- per pixel",
-        "Calibrated with hologen.dataset.exposure (see exposure_calibration)",
+        "Calibrated with hologen calibrate (see exposure_calibration)",
     )
     exposure_calibration: str = _value(
         "red_blood_cells p95 peak 4.85x (median 4.26x, max 5.30x); adherent_cells "
         "p95 peak 5.58x (median 2.52x, max 10.92x); 400 holograms per family, "
         "seeds 90000-90399, 224 px",
         "",
-        "Provenance of the calibrated exposures (hologen.dataset.exposure); "
+        "Provenance of the calibrated exposures, written by hologen calibrate; "
         "recalibrate after the image-size pilot",
+    )
+    calibration_fingerprint: str = _value(
+        "7922139bad49",
+        "",
+        "Fingerprint of the settings the exposures were calibrated for; hologen "
+        "generate warns when it no longer matches the recipe",
     )
 
 

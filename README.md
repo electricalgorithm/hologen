@@ -49,6 +49,33 @@ hologen generate --recipe paper.toml --output dataset-paper
 Values missing from a recipe file keep their defaults, and unknown keys are rejected.
 From Python, use `hologen.dataset.default_recipe()` and `load_recipe(path)`.
 
+### Exposure calibration
+Each object family is recorded at its own background exposure. The exposure is the
+largest background at which the recipe's `exposure_percentile` (95 by default) of
+noise-free laser-speckle holograms keeps its brightest point, plus three standard
+deviations of shot noise, below the saturation capacity. The brightest point depends
+on the geometry, the speckle, the saturation capacity and the objects. When you change
+any of these, calibrate the recipe again before you generate from it:
+
+```sh
+hologen recipe --output paper.toml            # 1. write and edit the recipe
+hologen calibrate --recipe paper.toml --write # 2. calibrate its exposures
+hologen measure --recipe paper.toml -o groups.md  # 3. check noise and clipping
+hologen generate --recipe paper.toml --output dataset-paper
+```
+
+`calibrate --write` stores the exposures in the recipe with their provenance and a
+fingerprint of the settings they were calibrated for. If those settings change
+afterwards, `generate` and `measure` print a warning. The fingerprint covers only
+the recipe, so a change to the object models in the code needs a recalibration that
+no warning will announce.
+
+`measure` reports, for every group (noise configuration and object family), the
+noise relative to the background, how far normalising by the mean or the median
+moves the background, and how often holograms clip. These are the numbers to quote
+about a dataset. Both commands use fixed seeds far from the dataset seeds, so their
+results can be reproduced.
+
 ## Noise Model
 Every recording passes through a model of a real camera (Sony IMX183 CMOS behind a 10x/0.45
 objective, EMVA 1288):
