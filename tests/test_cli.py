@@ -1,6 +1,4 @@
-"""
-End-to-end tests of the hologen command-line interface.
-"""
+"""End-to-end tests of the hologen command-line interface."""
 
 from pandas.core.frame import DataFrame
 from typer.testing import Result

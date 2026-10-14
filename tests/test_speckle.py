@@ -66,8 +66,10 @@ def test_fully_developed_speckle_is_exponential() -> None:
 @pytest.mark.parametrize("grain_size", [6.0, 10.0])
 def test_grain_size_matches_theory(grain_size: float) -> None:
     """
-    The intensity autocovariance of fully developed speckle behind a circular
-    pupil is |2 J1(x) / x|^2 with x = pi * r / grain_size (Goodman, Sec. 4.4).
+    Speckle has the intensity autocovariance of a circular pupil.
+
+    For fully developed speckle it is |2 J1(x) / x|^2 with
+    x = pi * r / grain_size (Goodman, Sec. 4.4).
     """
     autocov = numpy.zeros(RESOLUTION)
     for _ in range(8):
@@ -85,9 +87,11 @@ def test_grain_size_matches_theory(grain_size: float) -> None:
 
 def test_field_correlation_matches_pupil() -> None:
     """
-    The field autocorrelation behind a circular pupil is 2 J1(x) / x (Goodman,
-    Sec. 4.4). Unlike |A|^2, it changes sign if the pupil is placed off DC, so
-    this catches a pupil built on a centred (fftshift-ed) frequency grid.
+    The speckle field has the autocorrelation 2 J1(x) / x of a circular pupil.
+
+    See Goodman, Sec. 4.4. Unlike |A|^2, it changes sign if the pupil is placed
+    off DC, so this catches a pupil built on a centred (fftshift-ed) frequency
+    grid.
     """
     autocorr = numpy.zeros(RESOLUTION)
     for _ in range(8):
@@ -103,8 +107,10 @@ def test_field_correlation_matches_pupil() -> None:
 
 def test_partial_speckle_is_smooth_at_pixel_scale() -> None:
     """
-    For C < 1 the linear term 2 sqrt(beta) Re(A) is visible in S, so neighbouring
-    pixels inside one grain must be strongly positively correlated.
+    Neighbouring pixels inside one grain are strongly correlated for C < 1.
+
+    For C < 1 the linear term 2 sqrt(beta) Re(A) is visible in S, so the
+    correlation must be strongly positive.
     """
     pattern = generate_speckle_pattern(RESOLUTION, PIXEL_SIZE, GRAIN_SIZE, 0.1)
     pattern = pattern - pattern.mean()
@@ -158,6 +164,12 @@ def test_simulator_applies_speckle_at_sensor() -> None:
     """Speckle multiplies the hologram and leaves the object field untouched."""
 
     def make_simulator() -> InlineHologramSimulator:
+        """
+        Create an empty simulator with a fixed seed.
+
+        Returns:
+            InlineHologramSimulator: The simulator.
+        """
         RandomNumberGenerator.set_seed(99)
         return InlineHologramSimulator(resolution=128, pixel_size=4.65)
 

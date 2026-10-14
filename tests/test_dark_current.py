@@ -1,6 +1,4 @@
-"""
-Unit tests for dark current noise (EMVA Standard 1288, Release 4.0 Linear, Sec. 3).
-"""
+"""Unit tests for dark current noise (EMVA Standard 1288, Release 4.0 Linear, Sec. 3)."""
 
 import numpy
 import pytest

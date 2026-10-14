@@ -1,6 +1,4 @@
-"""
-Tests for the dataset recipe: cited defaults, TOML round trip and validation.
-"""
+"""Tests for the dataset recipe: cited defaults, TOML round trip and validation."""
 
 import dataclasses
 import pathlib

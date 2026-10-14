@@ -1,6 +1,8 @@
 """
-Tests for the procedural adherent cells: their statistics must match the values
-measured on 7476 real cells by scripts/calibrate_adherent_cells.py.
+Tests for the procedural adherent cells.
+
+Their statistics must match the values measured on 7476 real cells by
+scripts/calibrate_adherent_cells.py.
 """
 
 import numpy
@@ -21,7 +23,13 @@ WAVELENGTH: float = 0.532  # um
 
 @pytest.fixture(scope="module")
 def sampled_cells() -> dict[str, numpy.ndarray]:
-    """Shape parameters and fill ratios of 400 generated cells."""
+    """
+    Draw 400 cells and measure their shape parameters and fill ratios.
+
+    Returns:
+        dict[str, numpy.ndarray]: Diameters, aspect ratios, peak OPDs and fill
+            ratios of the cells, each of length 400.
+    """
     rng = numpy.random.default_rng(11)
     sim = InlineHologramSimulator(512, PIXEL, WAVELENGTH)
     diameters, aspects, peaks, fills = [], [], [], []
@@ -78,6 +86,13 @@ def test_cell_peak_is_scaled_to_the_drawn_value() -> None:
 
 @pytest.fixture(scope="module")
 def culture() -> tuple[InlineHologramSimulator, int]:
+    """
+    Fill a 1024 px field with adherent cells at the measured coverage.
+
+    Returns:
+        tuple[InlineHologramSimulator, int]: The simulator with the cells and
+            the number of cells placed.
+    """
     RandomNumberGenerator.set_seed(5)
     sim = InlineHologramSimulator(1024, PIXEL, WAVELENGTH)
     return sim, add_adherent_cells(sim)

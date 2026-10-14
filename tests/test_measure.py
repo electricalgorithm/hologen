@@ -1,6 +1,4 @@
-"""
-Tests for the exposure calibration, its fingerprint and the group measurement.
-"""
+"""Tests for the exposure calibration, its fingerprint and the group measurement."""
 
 import pathlib
 
@@ -49,8 +47,10 @@ def small_recipe() -> Recipe:
 
 def test_default_exposures_match_the_default_settings() -> None:
     """
-    The fingerprint stored in the code must follow the default settings. If this
-    fails, a default changed and the exposures need `hologen calibrate` again.
+    The fingerprint stored in the code must follow the default settings.
+
+    If this fails, a default changed and the exposures need `hologen calibrate`
+    again.
     """
     assert exposures_are_current(default_recipe())
 

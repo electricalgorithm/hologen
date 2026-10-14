@@ -1,6 +1,8 @@
 """
-Unit tests for the camera readout: read noise and the analog-to-digital
-conversion (EMVA Standard 1288, Release 4.0 Linear, Sec. 2.4, Eq. 14).
+Unit tests for the camera readout.
+
+The readout adds read noise and performs the analog-to-digital conversion
+(EMVA Standard 1288, Release 4.0 Linear, Sec. 2.4, Eq. 14).
 """
 
 import numpy
@@ -97,9 +99,11 @@ def test_quantisation_noise_is_one_twelfth() -> None:
 
 def test_recording_follows_the_emva_noise_law() -> None:
     """
-    On an empty field every pixel has the same mean, so the variance of the
-    digital output must equal K^2 (sigma_d^2 + mu_e + mu_dark) + 1/12
-    (EMVA 1288, Eq. 14, with dark electrons as an extra Poisson term).
+    The variance of the digital output follows EMVA 1288, Eq. 14.
+
+    On an empty field every pixel has the same mean, so the variance must equal
+    K^2 (sigma_d^2 + mu_e + mu_dark) + 1/12, with the dark electrons as an extra
+    Poisson term.
     """
     background, dark, read, bits = 4000.0, 7.1, 10.0, 12
     sim = InlineHologramSimulator(resolution=256, pixel_size=4.65)
@@ -119,10 +123,12 @@ def test_recording_follows_the_emva_noise_law() -> None:
 
 def test_dataset_settings_do_not_saturate() -> None:
     """
-    Regression test: with the 4000 e- exposure, the old ADC step (gain 1) clipped
-    27% of the pixels at 4095. With the gain set by the saturation capacity no
-    hologram of the dataset recipe (geometry, camera and laser speckle) should
-    reach full scale.
+    No hologram of the dataset recipe reaches full scale.
+
+    This is a regression test. With the 4000 e- exposure, the old ADC step
+    (gain 1) clipped 27% of the pixels at 4095. With the gain set by the
+    saturation capacity, no hologram of the recipe's geometry, camera and laser
+    speckle should clip.
     """
     recipe = default_recipe()
     config = recipe.hologram_config()

@@ -1,6 +1,4 @@
-"""
-Tests for the frequency grid and the objective pupil of the magnified setup.
-"""
+"""Tests for the frequency grid and the objective pupil of the magnified setup."""
 
 import numpy
 import pytest
@@ -21,8 +19,10 @@ def test_frequency_grid_has_one_sample_per_pixel(
     resolution: int, pixel_size: float
 ) -> None:
     """
-    Regression test: numpy.arange with a float step gave 225 samples for 224
-    pixels of 0.24 um, which broke every propagation on that grid.
+    The frequency grid has exactly one sample per pixel.
+
+    This is a regression test. numpy.arange with a float step gave 225 samples
+    for 224 pixels of 0.24 um, which broke every propagation on that grid.
     """
     grid = create_frequency_grid(resolution, pixel_size)
     assert grid.FX.shape == (resolution, resolution)
@@ -46,7 +46,15 @@ def test_invalid_numerical_aperture_raises(numerical_aperture: float) -> None:
 
 
 def random_object(seed: int) -> numpy.ndarray:
-    """A small object with fine detail on the magnified grid."""
+    """
+    Create an object with fine detail on the magnified grid.
+
+    Args:
+        seed (int): Random seed of the object.
+
+    Returns:
+        numpy.ndarray: The complex object field, shape (224, 224).
+    """
     RandomNumberGenerator.set_seed(seed)
     sim = InlineHologramSimulator(resolution=224, pixel_size=PIXEL)
     add_random_cells(sim, num_cells=5, radius_range=(2, 6))

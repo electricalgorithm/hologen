@@ -1,6 +1,8 @@
 """
-Tests for the dataset generator: that every noise configuration reaches the
-simulator unchanged, and that the stored reconstruction has the physical scale.
+Tests for the dataset generator.
+
+Every noise configuration must reach the simulator unchanged, and the stored
+reconstruction must have the physical scale.
 """
 
 from pandas.core.frame import DataFrame
@@ -19,7 +21,15 @@ SAMPLES_PER_CONFIGURATION: int = 2
 
 
 def tiny_recipe() -> Recipe:
-    """Red blood cells on a 128 x 128 grid (31 um, about 4 cells), small enough for a test."""
+    """
+    Build a recipe small enough for a test.
+
+    It has red blood cells on a 128 x 128 grid, which is 31 um wide and holds
+    about 4 cells.
+
+    Returns:
+        Recipe: The recipe with 8 holograms.
+    """
     return recipe_from_dict(
         {
             "geometry": {"resolution": 128},
@@ -29,6 +39,13 @@ def tiny_recipe() -> Recipe:
 
 
 def generate(recipe: Recipe, output: pathlib.Path) -> None:
+    """
+    Generate a recipe's dataset the way hologen generate does.
+
+    Args:
+        recipe (Recipe): The recipe to generate.
+        output (pathlib.Path): Folder for the dataset files.
+    """
     generator = DatasetGenerator(
         DatasetConfig(
             output_dir=output,
@@ -56,6 +73,17 @@ def test_each_configuration_reaches_the_simulator(
     def spy(
         self: InlineHologramSimulator, *args: object, **kwargs: object
     ) -> numpy.ndarray:
+        """
+        Record the keyword arguments and call the real generate_hologram.
+
+        Args:
+            self (InlineHologramSimulator): The simulator.
+            *args (object): Positional arguments of generate_hologram.
+            **kwargs (object): Keyword arguments of generate_hologram.
+
+        Returns:
+            numpy.ndarray: The hologram from the real method.
+        """
         calls.append(kwargs)
         return original(self, *args, **kwargs)
 
@@ -102,9 +130,10 @@ def test_each_configuration_reaches_the_simulator(
 
 def test_stored_data_has_the_physical_scale(tmp_path: pathlib.Path) -> None:
     """
-    Holograms are stored in digital numbers with the illumination at K * electrons,
-    and the stored back-propagation is normalised by that, so its amplitude has
-    the scale of the ground-truth object.
+    The stored reconstruction has the amplitude scale of the ground truth.
+
+    Holograms are stored in digital numbers with the illumination at
+    K * electrons, and the stored back-propagation is normalised by that.
     """
     recipe = tiny_recipe()
     generate(recipe, tmp_path)

@@ -23,7 +23,15 @@ def seed() -> None:
 
 
 def empty_hologram(**kwargs: float | bool) -> numpy.ndarray:
-    """Record a hologram of an empty field, where |U|^2 = 1 at every pixel."""
+    """
+    Record a hologram of an empty field, where |U|^2 = 1 at every pixel.
+
+    Args:
+        **kwargs (float | bool): Noise and camera options of generate_hologram.
+
+    Returns:
+        numpy.ndarray: The recorded hologram.
+    """
     sim = InlineHologramSimulator(resolution=RESOLUTION, pixel_size=4.65)
     return sim.generate_hologram(z_distance=Z_DISTANCE, **kwargs)
 
@@ -69,9 +77,11 @@ def test_simulator_shot_noise_statistics() -> None:
 
 def test_dark_current_is_not_counted_twice() -> None:
     """
-    Regression test: photo-electrons and dark electrons are independent Poisson
-    processes, so the total variance is N + d. Sampling shot noise after adding
-    the dark signal gives N + 2d.
+    Photo-electrons and dark electrons add their variances once, N + d.
+
+    This is a regression test. They are independent Poisson processes, so the
+    total variance is N + d. Sampling shot noise after adding the dark signal
+    gave N + 2d.
     """
     signal, dark = 1000.0, 500.0
     hologram = empty_hologram(

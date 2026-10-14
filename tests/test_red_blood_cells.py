@@ -1,6 +1,8 @@
 """
-Tests for the red blood cell objects (Evans and Fung 1972 shape, Gienger et al.
-2019 refractive index, Prahl haemoglobin absorption).
+Tests for the red blood cell objects.
+
+They cover the Evans and Fung 1972 shape, the Gienger et al. 2019 refractive
+index and Prahl's haemoglobin absorption.
 """
 
 import numpy
@@ -21,6 +23,7 @@ WAVELENGTH: float = 0.532  # um
 
 @pytest.fixture(autouse=True)
 def seed() -> None:
+    """Seed the shared generator before every test."""
     RandomNumberGenerator.set_seed(97)
 
 
@@ -44,6 +47,12 @@ def test_profile_scales_uniformly() -> None:
 
 
 def single_cell() -> InlineHologramSimulator:
+    """
+    Place one red blood cell of the Evans-Fung size on a 128 px grid.
+
+    Returns:
+        InlineHologramSimulator: The simulator with the cell.
+    """
     sim = InlineHologramSimulator(
         resolution=128, pixel_size=PIXEL, wavelength=WAVELENGTH
     )

@@ -1,6 +1,8 @@
 """
-Tests for the exposure rule: the largest background at which q percent of
-holograms keep their brightest point plus 3 sigma of shot noise below saturation.
+Tests for the exposure rule.
+
+The exposure is the largest background at which q percent of holograms keep their
+brightest point plus 3 sigma of shot noise below saturation.
 """
 
 from typing import Any
@@ -49,8 +51,9 @@ def test_peaks_are_reproducible_and_brighter_than_the_background() -> None:
 
 def test_calibrated_exposure_lets_about_the_rest_clip() -> None:
     """
-    Calibrated on one set of seeds at q = 90, the exposure keeps about 90% of an
-    independent set of holograms below saturation.
+    An exposure calibrated at q = 90 keeps about 90% of new holograms unsaturated.
+
+    The calibration and the check use independent sets of seeds.
     """
     recipe = small_recipe()
     background, peak = calibrate_exposure(

@@ -35,7 +35,15 @@ BACKGROUND_DN: float = CONFIG.background_electrons * adc_gain(
 
 
 def simulator(seed: int) -> InlineHologramSimulator:
-    """A simulator with the recipe geometry and the cells of this seed."""
+    """
+    Create a simulator with the recipe geometry and the objects of a seed.
+
+    Args:
+        seed (int): Random seed of the objects.
+
+    Returns:
+        InlineHologramSimulator: The simulator with the objects placed.
+    """
     RandomNumberGenerator.set_seed(seed)
     sim = InlineHologramSimulator(
         CONFIG.resolution, CONFIG.pixel_size, CONFIG.wavelength
@@ -45,7 +53,17 @@ def simulator(seed: int) -> InlineHologramSimulator:
 
 
 def record(noise: NoiseConfig, seed: int) -> numpy.ndarray:
-    """Record with the recipe's camera, relative to the true background."""
+    """
+    Record a sample with the recipe's camera.
+
+    Args:
+        noise (NoiseConfig): Noise configuration to record with.
+        seed (int): Random seed of the sample and its noise.
+
+    Returns:
+        numpy.ndarray: The recorded hologram divided by the true background, so
+            the background is 1.
+    """
     hologram = simulator(seed).generate_hologram(
         z_distance=CONFIG.z_distance,
         speckle_grain_size=noise.speckle_grain_size if noise.speckle else None,
@@ -61,7 +79,15 @@ def record(noise: NoiseConfig, seed: int) -> numpy.ndarray:
 
 
 def ideal_hologram(seed: int) -> numpy.ndarray:
-    """The noise-free intensity |ASM(O)|^2 of the same sample (background 1)."""
+    """
+    Compute the noise-free intensity |ASM(O)|^2 of a sample.
+
+    Args:
+        seed (int): Random seed of the sample.
+
+    Returns:
+        numpy.ndarray: The intensity with the background at 1.
+    """
     return simulator(seed).generate_hologram(
         z_distance=CONFIG.z_distance, background_electrons=1.0
     )
@@ -69,7 +95,13 @@ def ideal_hologram(seed: int) -> numpy.ndarray:
 
 @pytest.fixture(scope="module")
 def measured_noise() -> dict[str, float]:
-    """rms deviation from the ideal hologram per configuration, in %."""
+    """
+    Measure the noise of every configuration over ten samples.
+
+    Returns:
+        dict[str, float]: The rms deviation from the ideal hologram, in percent
+            of the background, by configuration name.
+    """
     seeds = range(40000, 40010)
     ideals = {seed: ideal_hologram(seed) for seed in seeds}
     return {
@@ -131,9 +163,11 @@ def test_each_configuration_adds_a_distinct_noise_level(
     measured_noise: dict[str, float],
 ) -> None:
     """
-    Regression test for the former 8 configurations, where dark-only and read-only
-    sets were practically noise-free and four speckle sets were indistinguishable:
-    each configuration must be at least 25% noisier than the previous one.
+    Each configuration must be at least 25% noisier than the previous one.
+
+    This is a regression test for the former 8 configurations, where the
+    dark-only and read-only sets were practically noise-free and four speckle
+    sets could not be told apart.
     """
     levels = [measured_noise[name] for name in DOCUMENTED_NOISE]
     for quieter, noisier in zip(levels, levels[1:]):
