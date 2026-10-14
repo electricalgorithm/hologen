@@ -1,3 +1,5 @@
+"""Shared random generator, grids, transfer functions and parquet helpers."""
+
 from .rng import RandomNumberGenerator
 from .stuff import save_intensity_to_parquet
 from .stuff import save_complex_field_to_parquet
