@@ -54,8 +54,16 @@ def get_angular_spectrum_transfer_function(
     """
     Compute the angular spectrum transfer function of free-space propagation.
 
-    Evanescent frequencies, beyond 1 / wavelength, get a root of 0, so they
-    pass with a phase of 0 instead of decaying.
+    Plane waves with a spatial frequency beyond 1 / wavelength are evanescent.
+    They decay as exp(-k z sqrt((wavelength f)^2 - 1)) instead of travelling
+    (Goodman, Introduction to Fourier Optics, Sec. 3.10), and the transfer
+    function is 0 there. Forwards this matches the physical decay to below 1e-12
+    once f is 0.02 cycles per um past 1 / wavelength at 20 um. Only a thin ring
+    of frequencies closer to the cutoff keeps more, and an objective pupil
+    removes it anyway. Backwards zero is the only stable choice, because the
+    exact inverse would amplify these waves by up to exp(k z sqrt(...)).
+    Evanescent frequencies only exist on grids with pixels smaller than
+    wavelength / 2.
 
     Args:
         resolution (int): Number of pixels along each side.
@@ -73,10 +81,9 @@ def get_angular_spectrum_transfer_function(
     sq_arg: numpy.ndarray = (
         1 - (wavelength * grid.FX) ** 2 - (wavelength * grid.FY) ** 2
     )
-    sq_arg: numpy.ndarray = numpy.maximum(sq_arg, 0)
-    root: numpy.ndarray = numpy.sqrt(sq_arg)
+    propagating: numpy.ndarray = sq_arg >= 0
+    root: numpy.ndarray = numpy.sqrt(numpy.maximum(sq_arg, 0))
 
     k: float = 2 * numpy.pi / wavelength
-    if is_forward:
-        return numpy.exp(1j * k * z_distance * root)
-    return numpy.exp(-1j * k * z_distance * root)
+    sign: float = 1.0 if is_forward else -1.0
+    return numpy.where(propagating, numpy.exp(sign * 1j * k * z_distance * root), 0)

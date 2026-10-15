@@ -1,16 +1,22 @@
-"""Tests for the frequency grid and the objective pupil of the magnified setup."""
+"""Tests for the frequency grid, the transfer function and the objective pupil."""
 
 import numpy
 import pytest
 
 from hologen import InlineHologramSimulator, RandomNumberGenerator
 from hologen.objects import add_random_cells
-from hologen.propagator import forwards_propagate, objective_pupil
+from hologen.propagator import (
+    backwards_propagate,
+    forwards_propagate,
+    objective_pupil,
+)
 from hologen.utils.domains import create_frequency_grid
+from hologen.utils.maths import get_angular_spectrum_transfer_function
 
 WAVELENGTH: float = 0.532  # um
 NA: float = 0.45
 PIXEL: float = 0.24  # um, IMX183 behind a 10x objective
+Z: float = 20.0  # um
 
 
 @pytest.mark.parametrize("resolution", [64, 224, 225, 512, 1024])
@@ -103,3 +109,86 @@ def test_simulator_uses_its_numerical_aperture() -> None:
         ** 2
     )
     numpy.testing.assert_allclose(hologram, expected)
+
+
+def evanescent_mask(resolution: int, pixel_size: float) -> numpy.ndarray:
+    """
+    Mark the spatial frequencies beyond 1 / wavelength.
+
+    Args:
+        resolution (int): Number of pixels along each side.
+        pixel_size (float): Pixel size, in um.
+
+    Returns:
+        numpy.ndarray: True where the plane wave is evanescent.
+    """
+    grid = create_frequency_grid(resolution, pixel_size)
+    return numpy.hypot(grid.FX, grid.FY) > 1 / WAVELENGTH
+
+
+@pytest.mark.parametrize("is_forward", [True, False])
+def test_evanescent_waves_are_removed(is_forward: bool) -> None:
+    """The magnified grid has evanescent frequencies, and they do not pass."""
+    transfer: numpy.ndarray = get_angular_spectrum_transfer_function(
+        224, PIXEL, WAVELENGTH, Z, is_forward
+    )
+    evanescent: numpy.ndarray = evanescent_mask(224, PIXEL)
+    assert 0.35 < evanescent.mean() < 0.37  # 36% of the 0.24 um grid
+    assert numpy.all(transfer[evanescent] == 0)
+    numpy.testing.assert_allclose(numpy.abs(transfer[~evanescent]), 1.0)
+
+
+def test_zero_matches_the_physical_decay_away_from_the_cutoff() -> None:
+    """
+    Forwards, zero equals the physical decay except in a thin ring past 1 / wavelength.
+
+    The decay is exp(-k z sqrt((wavelength f)^2 - 1)). At 20 um it is below 1e-12
+    once f is 0.02 cycles per um past 1 / wavelength. Closer to the circle a few
+    grid points keep more (at most 0.0076 on the 224 px grid), but those lie far
+    beyond the objective pupil (0.85 cycles per um), so no hologram contains them.
+    """
+    grid = create_frequency_grid(224, PIXEL)
+    radius: numpy.ndarray = numpy.hypot(grid.FX, grid.FY)
+    arg: numpy.ndarray = 1 - (WAVELENGTH * radius) ** 2
+    k: float = 2 * numpy.pi / WAVELENGTH
+    exact: numpy.ndarray = numpy.where(
+        arg >= 0,
+        numpy.exp(1j * k * Z * numpy.sqrt(numpy.maximum(arg, 0))),
+        numpy.exp(-k * Z * numpy.sqrt(numpy.maximum(-arg, 0))),
+    )
+    transfer: numpy.ndarray = get_angular_spectrum_transfer_function(
+        224, PIXEL, WAVELENGTH, Z, True
+    )
+    error: numpy.ndarray = numpy.abs(transfer - exact)
+    away: numpy.ndarray = radius > 1 / WAVELENGTH + 0.02
+    assert error[away].max() < 1e-12
+    assert error.max() < 0.01
+    assert radius[error > 1e-12].min() > NA / WAVELENGTH  # never inside the pupil
+
+
+def test_lensless_grid_has_no_evanescent_waves() -> None:
+    """With 4.65 um pixels every frequency propagates, so nothing changed there."""
+    transfer: numpy.ndarray = get_angular_spectrum_transfer_function(
+        224, 4.65, WAVELENGTH, 20000.0, True
+    )
+    assert not evanescent_mask(224, 4.65).any()
+    numpy.testing.assert_allclose(numpy.abs(transfer), 1.0)
+
+
+def test_back_propagation_removes_evanescent_noise() -> None:
+    """
+    White noise back-propagated on the magnified grid loses its evanescent part.
+
+    This is what the network input and reconstructed_XXXX.parquet see.
+    """
+    noise: numpy.ndarray = numpy.random.default_rng(3).normal(size=(224, 224))
+    field: numpy.ndarray = backwards_propagate(noise, Z, WAVELENGTH, PIXEL, 224)
+    spectrum: numpy.ndarray = numpy.abs(
+        numpy.fft.fftshift(numpy.fft.fft2(numpy.fft.fftshift(field)))
+    )
+    evanescent: numpy.ndarray = evanescent_mask(224, PIXEL)
+    assert spectrum[evanescent].max() < 1e-9 * spectrum.max()
+    kept: float = float(
+        numpy.sum(spectrum**2) / numpy.sum(numpy.abs(numpy.fft.fft2(noise)) ** 2)
+    )
+    assert kept == pytest.approx(1 - evanescent.mean(), abs=0.02)
