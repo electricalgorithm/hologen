@@ -6,6 +6,7 @@ with different noise configurations, making it easy for consumers to create
 custom datasets for machine learning or research purposes.
 """
 
+from hologen.dataset.configs import HologramConfig
 from typing import Literal
 from pathlib import Path
 from typing import Any
@@ -127,18 +128,19 @@ class DatasetGenerator:
             print(f"Generating dataset with {len(self._configs)} configurations...")
             print(f"Total samples: {total_samples}")
 
-        holo_config = self.config.hologram_config
+        holo_config: HologramConfig = self.config.hologram_config
 
         for config_name, (num_samples, noise_config, objects) in self._configs.items():
             if verbose:
-                noise_desc = self._describe_noise(noise_config)
+                noise_desc: str = self._describe_noise(noise_config)
                 print(
                     f"  Generating {num_samples} samples: {config_name} ({noise_desc})..."
                 )
 
             for i in range(num_samples):
                 # Create simulator with unique seed
-                RandomNumberGenerator.set_seed(self.config.base_seed + global_idx)
+                seed: int = self.config.base_seed + global_idx
+                RandomNumberGenerator.set_seed(seed)
                 sim = InlineHologramSimulator(
                     resolution=holo_config.resolution,
                     pixel_size=holo_config.pixel_size,
@@ -148,7 +150,9 @@ class DatasetGenerator:
 
                 # Generate hologram
                 ground_truth, hologram, reconstructed, details = (
-                    self._generate_single_hologram(sim, noise_config, objects)
+                    self._generate_single_hologram(
+                        sim, noise_config, objects, holo_config.true_distance(seed)
+                    )
                 )
 
                 # Accumulate samples
@@ -202,7 +206,8 @@ class DatasetGenerator:
         self,
         sim: InlineHologramSimulator,
         noise: NoiseConfig,
-        objects: ObjectFamily | None = None,
+        objects: ObjectFamily | None,
+        z_true: float,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Generate a single hologram with the given noise configuration.
@@ -214,15 +219,19 @@ class DatasetGenerator:
             objects (ObjectFamily | None): Object family to place and its
                 exposure, or None for the first-version ellipses with the
                 HologramConfig exposure.
+            z_true (float): Distance at which the hologram is recorded, in
+                microns (HologramConfig.true_distance). The reconstruction always
+                uses the nominal distance, which is all a user knows.
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]: The
                 complex ground truth, the recorded intensity in digital numbers,
                 the back-propagated field normalised by the background, and the
-                metadata of the hologram (object family, objects placed, exposure
-                and clipped pixel fraction).
+                metadata of the hologram (object family, objects placed, exposure,
+                clipped pixel fraction, and true and nominal distance).
         """
-        holo_config = self.config.hologram_config
+        holo_config: HologramConfig = self.config.hologram_config
+        recording_distance: float = z_true
 
         # Reset and create object
         sim.reset_object_field()
@@ -241,7 +250,7 @@ class DatasetGenerator:
 
         # Generate hologram with noise
         hologram_intensity = sim.generate_hologram(
-            z_distance=holo_config.z_distance,
+            z_distance=recording_distance,
             speckle_grain_size=noise.speckle_grain_size if noise.speckle else None,
             speckle_contrast=noise.speckle_contrast if noise.speckle else 0.0,
             shot_noise=noise.shot,
@@ -280,6 +289,8 @@ class DatasetGenerator:
             "clipped_fraction": float(
                 np.mean(hologram_intensity >= 2**holo_config.bit_depth - 1)
             ),
+            "z_true": recording_distance,
+            "z_nominal": holo_config.z_distance,
         }
         return ground_truth, hologram_intensity, reconstructed, details
 
