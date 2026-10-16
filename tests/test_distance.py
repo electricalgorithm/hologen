@@ -21,6 +21,7 @@ from hologen.dataset.exposure import peak_ratios
 from hologen.dataset.measure import (
     exposure_fingerprint,
     exposures_are_current,
+    measure_groups,
 )
 from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
 from hologen.propagator import backwards_propagate
@@ -215,3 +216,11 @@ def test_exposure_is_calibrated_at_the_nominal_distance(
         peak_ratios(recipe_with(geometry), "red_blood_cells", 3, seed=11),
         peak_ratios(recipe_with({}), "red_blood_cells", 3, seed=11),
     )
+
+
+def test_measurement_records_at_the_true_distance() -> None:
+    """Noise and clipping are measured where the dataset's holograms are recorded."""
+    shifted: Recipe = recipe_with({"z_offset": 4.0})
+    direct: Recipe = recipe_with({"z_distance": NOMINAL + 4.0})
+    assert measure_groups(shifted, count=2) == measure_groups(direct, count=2)
+    assert measure_groups(shifted, count=2) != measure_groups(recipe_with({}), count=2)

@@ -164,6 +164,7 @@ def _record(
     config: HologramConfig,
     noise: NoiseConfig,
     family: ObjectFamily,
+    z_distance: float,
 ) -> numpy.ndarray:
     """
     Record a hologram of the simulator's objects with a group's noise and exposure.
@@ -173,12 +174,13 @@ def _record(
         config (HologramConfig): Geometry and camera of the recipe.
         noise (NoiseConfig): Noise configuration of the group.
         family (ObjectFamily): Object family of the group, for its exposure.
+        z_distance (float): Recording distance of this hologram, in microns.
 
     Returns:
         numpy.ndarray: The recorded hologram in digital numbers.
     """
     return sim.generate_hologram(
-        config.z_distance,
+        z_distance,
         speckle_grain_size=noise.speckle_grain_size if noise.speckle else None,
         speckle_contrast=noise.speckle_contrast if noise.speckle else 0.0,
         shot_noise=noise.shot,
@@ -226,10 +228,11 @@ def measure_groups(
                 config.numerical_aperture,
             )
             family.place(sim)
+            distance: float = config.true_distance(seed + i)
             ideal: numpy.ndarray = sim.generate_hologram(
-                config.z_distance, background_electrons=1.0
+                distance, background_electrons=1.0
             )
-            recorded: numpy.ndarray = _record(sim, config, noise, family)
+            recorded: numpy.ndarray = _record(sim, config, noise, family, distance)
             rms.append(float(numpy.std(recorded / background_dn - ideal)))
             by_mean.append(background_dn / float(recorded.mean()) - 1)
             by_median.append(background_dn / float(numpy.median(recorded)) - 1)
