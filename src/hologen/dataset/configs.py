@@ -2,11 +2,19 @@
 
 import dataclasses
 import pathlib
+from typing import Final
+
+import numpy
 
 from hologen.inline_simulator import (
     DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
 )
+
+
+# Second seed word of the distance draw, so it never shares a stream with the
+# objects and the noise of the same hologram.
+DISTANCE_STREAM: Final[int] = 7
 
 
 @dataclasses.dataclass
@@ -71,6 +79,34 @@ class HologramConfig:
     saturation_electrons: float = DEFAULT_SATURATION_ELECTRONS  # e- per pixel
     # NA of the imaging objective of a magnified setup; None for a lensless one.
     numerical_aperture: float | None = None
+    # The hologram is recorded at z_distance + z_offset + U(-z_error, z_error) and
+    # back-propagated at z_distance, the distance a user would assume.
+    z_offset: float = 0.0  # microns
+    z_error: float = 0.0  # microns
+
+    def true_distance(self, seed: int) -> float:
+        """
+        Draw the distance at which one hologram is recorded.
+
+        The random error comes from its own generator, seeded with the
+        hologram's seed and DISTANCE_STREAM, so the shared generator is not
+        touched. A hologram therefore keeps its objects and its speckle pattern
+        whatever the error. The camera noise is drawn from the same seed, but
+        Poisson sampling consumes a number of random values that depends on
+        the intensity, so its realisation changes with the distance while its
+        statistics do not.
+
+        Args:
+            seed (int): Seed of the hologram.
+
+        Returns:
+            float: The recording distance, in microns.
+        """
+        distance: float = self.z_distance + self.z_offset
+        if self.z_error == 0:
+            return distance
+        rng: numpy.random.Generator = numpy.random.default_rng([seed, DISTANCE_STREAM])
+        return distance + float(rng.uniform(-self.z_error, self.z_error))
 
 
 @dataclasses.dataclass

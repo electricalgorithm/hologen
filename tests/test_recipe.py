@@ -28,6 +28,8 @@ def test_defaults_are_the_cited_values() -> None:
         0.45,
         0.532,
         20.0,
+        0.0,
+        0.0,
         5,
     )
     assert recipe.geometry.pixel_size == pytest.approx(0.24)

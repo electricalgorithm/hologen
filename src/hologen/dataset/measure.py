@@ -73,7 +73,11 @@ def exposure_fingerprint(recipe: Recipe) -> str:
     Fingerprint the recipe settings that the calibrated exposures depend on.
 
     These are the geometry (including the image size), the speckle of the
-    light source, the saturation capacity and the object settings. Camera noise,
+    light source, the saturation capacity and the object settings. The distance
+    offset and error are left out. A real camera keeps its exposure when the
+    sample sits at the wrong distance, so the exposure is calibrated at the
+    nominal distance and holograms recorded elsewhere may clip more often,
+    which their metadata records. Camera noise,
     the noise configurations and the dataset size do not change the brightest
     point of a noise-free hologram, so they are left out.
 
@@ -91,8 +95,12 @@ def exposure_fingerprint(recipe: Recipe) -> str:
         "calibration_fingerprint",
     ):
         objects.pop(field)
+    geometry: dict[str, Any] = dataclasses.asdict(recipe.geometry)
+    # Exposures belong to the setup and are calibrated at the nominal distance.
+    geometry.pop("z_offset")
+    geometry.pop("z_error")
     settings: dict[str, Any] = {
-        "geometry": dataclasses.asdict(recipe.geometry),
+        "geometry": geometry,
         "speckle": dataclasses.asdict(recipe.speckle),
         "saturation_electrons": recipe.camera.saturation_electrons,
         "objects": objects,

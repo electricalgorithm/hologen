@@ -90,7 +90,38 @@ class Geometry:
         "Object-space defocus: 2 mm detector defocus in Wdowiak et al. 2025 "
         "divided by the axial magnification M^2 = 100",
     )
+    z_offset: float = _value(
+        0.0,
+        "um",
+        "Fixed shift of the recording distance from z_distance, for test sets at a "
+        "known distance error",
+    )
+    z_error: float = _value(
+        0.0,
+        "um",
+        "Half-width of a uniform random error of the recording distance, for "
+        "training robust to a wrong distance (6 um is one focus step of "
+        "Wdowiak et al. 2025, 0.6 mm at the detector divided by M^2 = 100)",
+    )
     num_cells: int = _value(5, "objects per hologram", "Design choice")
+
+    def __post_init__(self) -> None:
+        """
+        Check that every recording distance lies behind the object.
+
+        Raises:
+            ValueError: If z_error is negative, or if the shortest recording
+                distance is not positive.
+        """
+        if self.z_error < 0:
+            raise ValueError(f"z_error must not be negative (got {self.z_error}).")
+        shortest: float = self.z_distance + self.z_offset - self.z_error
+        if shortest <= 0:
+            raise ValueError(
+                f"The shortest recording distance, z_distance + z_offset - z_error = "
+                f"{shortest} um, must be positive. A distance of zero or less would "
+                "put the recording plane at or before the object."
+            )
 
     @property
     def pixel_size(self) -> float:
@@ -325,6 +356,8 @@ class Recipe:
             wavelength=self.geometry.wavelength,
             numerical_aperture=self.geometry.numerical_aperture,
             z_distance=self.geometry.z_distance,
+            z_offset=self.geometry.z_offset,
+            z_error=self.geometry.z_error,
             bit_depth=self.camera.bit_depth,
             num_cells=self.geometry.num_cells,
             background_electrons=self.camera.background_electrons,
