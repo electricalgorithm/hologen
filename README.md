@@ -49,6 +49,25 @@ hologen generate --recipe paper.toml --output dataset-paper
 Values missing from a recipe file keep their defaults, and unknown keys are rejected.
 From Python, use `hologen.dataset.default_recipe()` and `load_recipe(path)`.
 
+### Recording-distance errors
+A real setup rarely records at exactly the distance its user assumes. The geometry
+values `z_offset` and `z_error` record each hologram at
+`z_distance + z_offset + U(-z_error, z_error)`, while the stored reconstruction is
+still back-propagated at `z_distance`. The distance of each hologram is saved as
+`z_true` (and the assumed one as `z_nominal`) in `metadata_XXXX.parquet`. The random
+error has its own random stream, so datasets made from the same seed hold the same
+objects and speckle. Their camera noise has the same statistics but a different
+realisation, because Poisson sampling depends on the intensity.
+
+```sh
+hologen generate --output train-zaug --z-error 6   # training set, z in 14-26 um
+hologen generate --output sweep-m4 --z-offset -4 --seed 900000  # test set at 16 um
+```
+
+The exposure belongs to the setup, so it is calibrated at `z_distance` and neither
+value needs a recalibration. Holograms recorded further away can clip more often,
+as they would on a real camera, and `clipped_fraction` in the metadata shows it.
+
 ### Exposure calibration
 Each object family is recorded at its own background exposure. The exposure is the
 largest background at which the recipe's `exposure_percentile` (95 by default) of
