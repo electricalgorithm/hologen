@@ -17,7 +17,7 @@ from hologen.dataset.recipe import (
 
 
 def test_defaults_are_the_cited_values() -> None:
-    """The recipe reproduces the values recorded in the HOLO-015 register."""
+    """The recipe reproduces the cited default values."""
     recipe = default_recipe()
     assert (recipe.dataset.total_samples, recipe.dataset.seed) == (25000, 10000)
     assert recipe.dataset.configurations == list(CONFIGURATION_NAMES)

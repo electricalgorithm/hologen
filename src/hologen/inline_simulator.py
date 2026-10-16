@@ -14,10 +14,10 @@ DEFAULT_SATURATION_ELECTRONS: float = 14837.0
 
 # Mean photo-electrons per pixel from the unit-intensity illumination (|U|^2 = 1):
 # the largest background for which the brightest fringe (peak x background) plus
-# 3 sigma of shot noise stays below saturation. PROVISIONAL: the first-version
-# ellipses in the magnified geometry peak at 2.66x the background
-# (hologen measure), so 2.66 * 5400 + 3 sqrt(2.66 * 5400) = 14.5 ke-;
-# re-derive once the HOLO-002 cell objects exist.
+# 3 sigma of shot noise stays below saturation. The first-version ellipses in
+# the magnified geometry peak at 2.66x the background (hologen measure), so
+# 2.66 * 5400 + 3 sqrt(2.66 * 5400) = 14.5 ke-. The cell families have their own
+# calibrated exposures (hologen calibrate).
 DEFAULT_BACKGROUND_ELECTRONS: float = 5400.0
 
 

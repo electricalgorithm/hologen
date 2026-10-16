@@ -64,7 +64,7 @@ class Geometry:
     """
 
     resolution: int = _value(
-        224, "pixels", "Image size; decided after the HOLO-002 pilot"
+        224, "pixels", "Image size; 54 um field at 0.24 um per pixel"
     )
     sensor_pixel_size: float = _value(
         2.4,
@@ -116,8 +116,8 @@ class Camera:
         DEFAULT_BACKGROUND_ELECTRONS,
         "e- per pixel",
         "Brightest exposure without clipping: brightest fringe plus 3 sigma of "
-        "shot noise below the saturation capacity (PROVISIONAL until the "
-        "HOLO-002 cell objects exist)",
+        "shot noise below the saturation capacity, for the first-version "
+        "ellipses; the cell families have their own calibrated exposures",
     )
     saturation_electrons: float = _value(
         DEFAULT_SATURATION_ELECTRONS,
