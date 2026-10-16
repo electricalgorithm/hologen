@@ -8,7 +8,6 @@ Command-line interface of hologen.
     hologen explore <noise> [OPTIONS]   open an interactive noise explorer
 """
 
-from typing import Any
 import dataclasses
 import pathlib
 from typing import Annotated
@@ -27,6 +26,7 @@ from hologen.dataset.measure import (
 from hologen.dataset.recipe import (
     CONFIGURATION_NAMES,
     OBJECT_FAMILY_NAMES,
+    Geometry,
     Recipe,
     default_recipe,
     load_recipe,
@@ -55,6 +55,8 @@ def build_recipe(
     configs: list[str] | None,
     batch_size: int | None,
     objects: list[str] | None = None,
+    z_error: float | None = None,
+    z_offset: float | None = None,
 ) -> Recipe:
     """
     Read the recipe file, or the defaults, and apply the command-line flags.
@@ -70,6 +72,10 @@ def build_recipe(
         batch_size (int | None): Holograms per parquet file, or None to keep the
             recipe's.
         objects (list[str] | None): Object families, or None to keep the recipe's.
+        z_error (float | None): Half-width of the random recording-distance
+            error in um, or None to keep the recipe's.
+        z_offset (float | None): Fixed recording-distance offset in um, or None to
+            keep the recipe's.
 
     Returns:
         Recipe: The recipe with the flags applied.
@@ -89,13 +95,17 @@ def build_recipe(
         }.items()
         if value is not None
     }
-    geometry_changes: dict[str, int] | dict[Any, Any] = (
-        {} if resolution is None else {"resolution": resolution}
+    geometry: Geometry = recipe.geometry
+    geometry = dataclasses.replace(
+        geometry,
+        resolution=geometry.resolution if resolution is None else resolution,
+        z_error=geometry.z_error if z_error is None else z_error,
+        z_offset=geometry.z_offset if z_offset is None else z_offset,
     )
     return dataclasses.replace(
         recipe,
         dataset=dataclasses.replace(recipe.dataset, **dataset_changes),
-        geometry=dataclasses.replace(recipe.geometry, **geometry_changes),
+        geometry=geometry,
     )
 
 
@@ -167,6 +177,22 @@ def generate(
             min=1,
         ),
     ] = None,
+    z_error: Annotated[
+        float | None,
+        typer.Option(
+            help="Half-width in um of a uniform random error of the recording "
+            "distance; holograms are still back-propagated at the nominal "
+            f"distance. (recipe default: {DEFAULTS.geometry.z_error})",
+            min=0.0,
+        ),
+    ] = None,
+    z_offset: Annotated[
+        float | None,
+        typer.Option(
+            help="Fixed shift in um of the recording distance from the nominal "
+            f"one. (recipe default: {DEFAULTS.geometry.z_offset})",
+        ),
+    ] = None,
     visualization: Annotated[
         bool,
         typer.Option(help="Save an example figure of every configuration."),
@@ -201,6 +227,10 @@ def generate(
         config (list[str] | None): Noise configurations, overriding the recipe.
         objects (list[str] | None): Object families, overriding the recipe.
         batch_size (int | None): Holograms per parquet file, overriding the recipe.
+        z_error (float | None): Random recording-distance error in um, overriding
+            the recipe.
+        z_offset (float | None): Recording-distance offset in um, overriding the
+            recipe.
         visualization (bool): Whether to save dataset_examples.png.
         overwrite (bool): Whether to write into a folder that has a dataset.
 
@@ -211,7 +241,15 @@ def generate(
     """
     try:
         chosen: Recipe = build_recipe(
-            recipe, samples, seed, resolution, config, batch_size, objects
+            recipe,
+            samples,
+            seed,
+            resolution,
+            config,
+            batch_size,
+            objects,
+            z_error,
+            z_offset,
         )
     except ValueError as error:
         typer.echo(f"Error: {error}", err=True)

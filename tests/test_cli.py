@@ -255,3 +255,41 @@ def test_explorers_save_their_figure(explorer: str, tmp_path: pathlib.Path) -> N
     result = runner.invoke(app, ["explore", explorer, "--save", str(figure)])
     assert result.exit_code == 0, result.output
     assert figure.stat().st_size > 10_000
+
+
+def test_generate_records_at_the_distance_error_and_offset(
+    tmp_path: pathlib.Path,
+) -> None:
+    """
+    The distance flags reach the recipe and the metadata.
+
+    Args:
+        tmp_path (pathlib.Path): Folder for the dataset.
+    """
+    output: pathlib.Path = tmp_path / "data"
+    result: Result = runner.invoke(
+        app,
+        ["generate", "-o", str(output), *TINY, "--z-error", "6", "--z-offset", "-2"],
+    )
+    assert result.exit_code == 0, result.stdout
+
+    saved: dict = tomllib.loads((output / "recipe.toml").read_text())
+    assert saved["geometry"]["z_error"] == 6.0
+    assert saved["geometry"]["z_offset"] == -2.0
+    metadata: DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
+    assert metadata["z_true"].between(12.0, 24.0).all()
+    assert (metadata["z_nominal"] == 20.0).all()
+
+
+def test_impossible_distance_flags_are_a_clear_error(tmp_path: pathlib.Path) -> None:
+    """
+    A flag that puts the recording plane before the object is rejected.
+
+    Args:
+        tmp_path (pathlib.Path): Folder for the dataset.
+    """
+    result: Result = runner.invoke(
+        app, ["generate", "-o", str(tmp_path / "data"), *TINY, "--z-offset", "-25"]
+    )
+    assert result.exit_code == 2
+    assert "must be positive" in result.output
