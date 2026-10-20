@@ -70,6 +70,9 @@ def test_fingerprint_is_deterministic() -> None:
         {"camera": {"saturation_electrons": 10000.0}},
         {"objects": {"red_blood_cell_density": 0.002}},
         {"objects": {"exposure_percentile": 99.0}},
+        {"objects": {"opd_scale": 2.0}},
+        {"objects": {"adherent_absorption": 0.55}},
+        {"objects": {"haemoglobin_absorption_scale": 3.0}},
     ],
 )
 def test_settings_that_move_the_peak_change_the_fingerprint(

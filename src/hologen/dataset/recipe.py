@@ -15,7 +15,7 @@ from hologen.dataset.configs import HologramConfig, NoiseConfig
 from hologen.objects.adherent_cells import add_adherent_cells
 from hologen.objects.families import ObjectFamily
 from hologen.objects.random_cells import add_random_cells
-from hologen.objects.red_blood_cells import add_red_blood_cells
+from hologen.objects.red_blood_cells import RedBloodCellOptics, add_red_blood_cells
 from hologen.inline_simulator import (
     DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
@@ -238,6 +238,26 @@ class Objects:
         "Measured median field coverage of 7476 adherent cells "
         "(scripts/calibrate_adherent_cells.py, Vicar et al. data)",
     )
+    opd_scale: float = _value(
+        1.0,
+        "",
+        "Factor on the phase of every cell, 1 for real cells. At 2 (the "
+        "out-of-distribution phase test) adherent cells reach about 9.5 rad, as "
+        "rounded or dividing cells do; red blood cells would need about twice the "
+        "physiological haemoglobin concentration, so they are a stress test",
+    )
+    adherent_absorption: float = _value(
+        0.0,
+        "1/um of OPD",
+        "Unstained adherent cells are transparent. 0.55 (the absorption test) gives "
+        "a transmission of 0.8 at the measured p95 peak OPD of 0.407 um",
+    )
+    haemoglobin_absorption_scale: float = _value(
+        1.0,
+        "",
+        "Factor on the haemoglobin absorption of red blood cells (Prahl 1998, "
+        "532 nm); 3 for the absorption test",
+    )
     exposure_percentile: float = _value(
         95.0,
         "percent",
@@ -262,11 +282,32 @@ class Objects:
         "Provenance of the calibrated exposures, written by hologen calibrate",
     )
     calibration_fingerprint: str = _value(
-        "acbc1630124f",
+        "ef79cbdc7d12",
         "",
         "Fingerprint of the settings the exposures were calibrated for; hologen "
         "generate warns when it no longer matches the recipe",
     )
+
+    def __post_init__(self) -> None:
+        """
+        Check that the phase and absorption values are physical.
+
+        Raises:
+            ValueError: If opd_scale is not positive or an absorption value is
+                negative.
+        """
+        if self.opd_scale <= 0:
+            raise ValueError(f"opd_scale must be positive (got {self.opd_scale}).")
+        if self.adherent_absorption < 0:
+            raise ValueError(
+                "adherent_absorption must not be negative "
+                f"(got {self.adherent_absorption})."
+            )
+        if self.haemoglobin_absorption_scale < 0:
+            raise ValueError(
+                "haemoglobin_absorption_scale must not be negative "
+                f"(got {self.haemoglobin_absorption_scale})."
+            )
 
 
 @dataclasses.dataclass
@@ -427,6 +468,14 @@ class Recipe:
                 families, not only the selected ones.
         """
         objects: Objects = self.objects
+        # The scales are applied after every random draw, so a seed keeps its
+        # cells and their positions whatever the scales are.
+        base: RedBloodCellOptics = RedBloodCellOptics()
+        optics: RedBloodCellOptics = dataclasses.replace(
+            base,
+            delta_n=base.delta_n * objects.opd_scale,
+            absorption=base.absorption * objects.haemoglobin_absorption_scale,
+        )
 
         def red_blood_cells(sim: InlineHologramSimulator) -> int:
             """
@@ -440,7 +489,7 @@ class Recipe:
             """
             area: float = (sim.resolution * sim.pixel_size) ** 2
             count: int = int(round(objects.red_blood_cell_density * area))
-            return add_red_blood_cells(sim, count) if count else 0
+            return add_red_blood_cells(sim, count, optics) if count else 0
 
         def adherent_cells(sim: InlineHologramSimulator) -> int:
             """
@@ -452,7 +501,12 @@ class Recipe:
             Returns:
                 int: Number of cells placed.
             """
-            return add_adherent_cells(sim, coverage=objects.adherent_coverage)
+            return add_adherent_cells(
+                sim,
+                coverage=objects.adherent_coverage,
+                opd_scale=objects.opd_scale,
+                absorption=objects.adherent_absorption,
+            )
 
         def ellipses(sim: InlineHologramSimulator) -> int:
             """

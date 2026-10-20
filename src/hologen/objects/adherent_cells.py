@@ -193,6 +193,8 @@ def add_adherent_cells(
     stats: AdherentCellStatistics = AdherentCellStatistics(),
     max_overlap: float = 0.1,
     max_attempts: int = 200,
+    opd_scale: float = 1.0,
+    absorption: float = 0.0,
 ) -> int:
     """
     Fill the field with adherent cells and apply their phase.
@@ -209,6 +211,10 @@ def add_adherent_cells(
         max_overlap (float): Largest fraction of a cell's area that may overlap
             other cells.
         max_attempts (int): Placement attempts before giving up.
+        opd_scale (float): Factor applied to the OPD of every cell after all
+            random draws, so the cells and their positions do not change.
+        absorption (float): Amplitude attenuation per um of OPD. The amplitude
+            is exp(-absorption * OPD), as for a stain that binds to dry mass.
 
     Returns:
         int: The number of cells placed.
@@ -235,7 +241,8 @@ def add_adherent_cells(
         opd += cell
         occupied |= mask
         placed += 1
+    opd = opd * opd_scale
     simulator.apply_transmission(
-        numpy.ones_like(opd), 2 * numpy.pi / simulator.wavelength * opd
+        numpy.exp(-absorption * opd), 2 * numpy.pi / simulator.wavelength * opd
     )
     return placed
