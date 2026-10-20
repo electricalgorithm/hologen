@@ -37,6 +37,19 @@ hologen generate --output laser --config ideal --config camera_laser_speckle
 
 The folder also receives `recipe.toml`, the exact recipe the dataset was made from.
 
+### Dataset files
+
+Each batch of holograms is stored in four Parquet files with one row per hologram (format 2, `hologen.dataset.storage`):
+
+| File | Content |
+|---|---|
+| `hologram_XXXX.parquet` | `sample_id`, `intensity`: the recorded hologram as 16-bit camera counts, a 2-D list |
+| `ground_truth_XXXX.parquet` | `sample_id`, `real`, `imag`: the complex object field as float32 2-D lists |
+| `metadata_XXXX.parquet` | `sample_id`, `seed`, `config_name`, `object_family`, objects placed, exposure, clipped fraction, `z_true`, `z_nominal` |
+| `reconstructed_XXXX.parquet` | only with `--reconstructed`: the field back-propagated at the nominal distance |
+
+Every hologram is its own row group, so one can be read without the rest of its file, and each image file records the format version, units and image shape in its Parquet metadata. `hologen.dataset.storage.load_samples(folder, "hologram")` loads the images by sample id, and `ImageFile(path)` reads single rows; `scripts/load_dataset.py` shows how to join them to the metadata. Datasets in the earlier one-pixel-per-row layout are rejected with a message to regenerate them.
+
 ## Recipes
 Every physical value (geometry, camera, speckle) is part of a recipe. Write the
 default recipe, with the unit and source of each value, edit it and generate from it:
