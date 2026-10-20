@@ -191,4 +191,4 @@ def test_metadata_records_family_exposure_and_clipping(tmp_path: pathlib.Path) -
 
 def test_default_recipe_is_unchanged_by_the_tiny_one() -> None:
     """The helper must not leak its overrides into the defaults."""
-    assert default_recipe().geometry.resolution == 224
+    assert default_recipe().geometry.resolution == 1024

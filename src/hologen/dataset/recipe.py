@@ -64,7 +64,10 @@ class Geometry:
     """
 
     resolution: int = _value(
-        224, "pixels", "Image size; 54 um field at 0.24 um per pixel"
+        1024,
+        "pixels",
+        "Image size; a 246 um field at 0.24 um per pixel holds adherent cells of "
+        "every measured size (at 224 px half of them could not be placed)",
     )
     sensor_pixel_size: float = _value(
         2.4,
@@ -226,7 +229,8 @@ class Objects:
     red_blood_cell_density: float = _value(
         0.00415,
         "cells per um^2",
-        "Design choice: 12 cells per 54 x 54 um field, a sparse monolayer",
+        "Design choice: a sparse monolayer, 12 cells per 54 x 54 um "
+        "(about 250 per 246 x 246 um field)",
     )
     adherent_coverage: float = _value(
         0.263,
@@ -241,25 +245,24 @@ class Objects:
         "of the most strongly refracting cells",
     )
     red_blood_cells_background_electrons: float = _value(
-        2982.0,
+        2735.0,
         "e- per pixel",
         "Calibrated with hologen calibrate (see exposure_calibration)",
     )
     adherent_cells_background_electrons: float = _value(
-        2593.0,
+        1855.0,
         "e- per pixel",
         "Calibrated with hologen calibrate (see exposure_calibration)",
     )
     exposure_calibration: str = _value(
-        "red_blood_cells p95 peak 4.85x (median 4.26x, max 5.30x); adherent_cells "
-        "p95 peak 5.58x (median 2.52x, max 10.92x); 400 holograms per family, "
-        "seeds 90000-90399, 224 px",
+        "red_blood_cells p95 peak 5.29x (median 4.86x, max 5.87x); adherent_cells "
+        "p95 peak 7.80x (median 5.28x, max 10.86x); 400 holograms per family, "
+        "seeds 90000-90399, 1024 px",
         "",
-        "Provenance of the calibrated exposures, written by hologen calibrate; "
-        "recalibrate after the image-size pilot",
+        "Provenance of the calibrated exposures, written by hologen calibrate",
     )
     calibration_fingerprint: str = _value(
-        "7922139bad49",
+        "acbc1630124f",
         "",
         "Fingerprint of the settings the exposures were calibrated for; hologen "
         "generate warns when it no longer matches the recipe",
@@ -399,7 +402,10 @@ class Recipe:
         With the default values and the first-version ellipses, the rms deviation
         from the noise-free hologram is 0.02% of the background for ideal
         (quantisation only), 1.4% for camera, 2.0% for camera_led_speckle and
-        12.1% for camera_laser_speckle.
+        12.1% for camera_laser_speckle. The cell families are recorded at their
+        lower calibrated exposures, so their shot noise is larger: hologen measure
+        gives 1.9% (red blood cells) and 2.3% (adherent cells) for camera, 2.4% and
+        2.7% for camera_led_speckle and 12.9% and 12.3% for camera_laser_speckle.
 
         Returns:
             dict[str, NoiseConfig]: Noise configuration by name, in recipe order.

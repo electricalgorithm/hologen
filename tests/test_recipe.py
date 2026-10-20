@@ -22,7 +22,7 @@ def test_defaults_are_the_cited_values() -> None:
     assert (recipe.dataset.total_samples, recipe.dataset.seed) == (25000, 10000)
     assert recipe.dataset.configurations == list(CONFIGURATION_NAMES)
     assert dataclasses.astuple(recipe.geometry) == (
-        224,
+        1024,
         2.4,
         10.0,
         0.45,
