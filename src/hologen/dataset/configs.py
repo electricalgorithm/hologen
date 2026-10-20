@@ -117,6 +117,9 @@ class DatasetConfig:
     base_seed: int
     hologram_config: HologramConfig
     generate_visualization: bool = True
+    # The back-propagated field can be recomputed from the hologram, so it is
+    # only stored on request.
+    write_reconstructed: bool = False
 
     def __post_init__(self):
         """Convert output_dir to Path if needed."""

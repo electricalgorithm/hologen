@@ -197,6 +197,13 @@ def generate(
         bool,
         typer.Option(help="Save an example figure of every configuration."),
     ] = True,
+    reconstructed: Annotated[
+        bool,
+        typer.Option(
+            help="Also store the field back-propagated at the nominal distance "
+            "(reconstructed_XXXX.parquet). It can be recomputed from the hologram."
+        ),
+    ] = False,
     overwrite: Annotated[
         bool,
         typer.Option(help="Allow writing into a folder that already has a dataset."),
@@ -209,13 +216,14 @@ def generate(
     noise configuration is combined with every object family, and the holograms
     are split equally over these groups.
 
-    The output folder receives hologram_XXXX.parquet (recorded intensity in
-    digital numbers), ground_truth_XXXX.parquet (the complex object field),
-    reconstructed_XXXX.parquet (the back-propagated field before any network)
-    and metadata_XXXX.parquet (object family, objects placed, exposure and
-    clipped pixels of each hologram), one set per batch. It also receives
-    recipe.toml, the exact recipe used, and dataset_examples.png unless
-    --no-visualization is given.
+    The output folder receives, per batch, hologram_XXXX.parquet (recorded
+    intensity as 16-bit camera counts), ground_truth_XXXX.parquet (the complex
+    object field as float32) and metadata_XXXX.parquet (seed, object family,
+    objects placed, exposure, clipped pixels and distances of each hologram),
+    each with one row per hologram. With --reconstructed it also receives
+    reconstructed_XXXX.parquet, the field back-propagated at the nominal
+    distance. It also receives recipe.toml, the exact recipe used, and
+    dataset_examples.png unless --no-visualization is given.
 
     \f
     Args:
@@ -232,6 +240,7 @@ def generate(
         z_offset (float | None): Recording-distance offset in um, overriding the
             recipe.
         visualization (bool): Whether to save dataset_examples.png.
+        reconstructed (bool): Whether to store the back-propagated field.
         overwrite (bool): Whether to write into a folder that has a dataset.
 
     Raises:
@@ -279,6 +288,7 @@ def generate(
             base_seed=chosen.dataset.seed,
             hologram_config=chosen.hologram_config(),
             generate_visualization=visualization,
+            write_reconstructed=reconstructed,
         ),
         batch_size=chosen.dataset.batch_size,
     )

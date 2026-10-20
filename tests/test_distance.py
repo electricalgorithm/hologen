@@ -127,7 +127,7 @@ def test_offset_records_at_the_shifted_distance_and_reconstructs_at_nominal(
     tmp_path: pathlib.Path,
 ) -> None:
     shifted: Recipe = recipe_with({"z_offset": 4.0}, samples=1)
-    generate(shifted, tmp_path / "shifted")
+    generate(shifted, tmp_path / "shifted", write_reconstructed=True)
     direct: Recipe = recipe_with({"z_distance": NOMINAL + 4.0}, samples=1)
     generate(direct, tmp_path / "direct")
 

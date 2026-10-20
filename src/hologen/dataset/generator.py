@@ -300,9 +300,9 @@ class DatasetGenerator:
         """
         Write the accumulated samples of one batch and clear the buffers.
 
-        Each batch becomes hologram_XXXX.parquet, ground_truth_XXXX.parquet,
-        reconstructed_XXXX.parquet and metadata_XXXX.parquet, in hologen format 2
-        (hologen.dataset.storage). Writing
+        Each batch becomes hologram_XXXX.parquet, ground_truth_XXXX.parquet and
+        metadata_XXXX.parquet, plus reconstructed_XXXX.parquet when the dataset
+        config asks for it, in hologen format 2 (hologen.dataset.storage). Writing
         batch by batch keeps memory use bounded for large datasets.
         """
         if not self._ground_truths:
@@ -327,12 +327,13 @@ class DatasetGenerator:
             sample_ids,
             np.stack(self._holograms),
         )
-        ImageFile.write_fields(
-            output_dir / f"reconstructed_{batch_num:04d}.parquet",
-            sample_ids,
-            np.stack(self._reconstructed),
-            kind="reconstructed",
-        )
+        if self.config.write_reconstructed:
+            ImageFile.write_fields(
+                output_dir / f"reconstructed_{batch_num:04d}.parquet",
+                sample_ids,
+                np.stack(self._reconstructed),
+                kind="reconstructed",
+            )
 
         # One row per hologram: group, seed, object family, exposure, clipping
         # and distances.

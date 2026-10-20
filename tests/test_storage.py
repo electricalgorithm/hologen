@@ -91,9 +91,10 @@ def test_the_old_per_pixel_layout_is_rejected(tmp_path: pathlib.Path) -> None:
 
 
 def test_generated_datasets_are_compact_and_complete(tmp_path: pathlib.Path) -> None:
-    """A generated dataset has one row per hologram and the seeds in its metadata."""
+    """A generated dataset has one row per hologram, seeds in the metadata, no reconstruction."""
     recipe: Recipe = small_recipe()
     generate(recipe, tmp_path)
+    assert not (tmp_path / "reconstructed_0000.parquet").exists()
     holograms: dict[int, numpy.ndarray] = load_samples(tmp_path, "hologram")
     assert sorted(holograms) == [0, 1, 2, 3]
     assert holograms[0].shape == (48, 48)
@@ -102,3 +103,11 @@ def test_generated_datasets_are_compact_and_complete(tmp_path: pathlib.Path) -> 
     assert metadata["seed"].tolist() == [
         recipe.dataset.seed + index for index in range(4)
     ]
+
+
+def test_the_reconstruction_is_written_on_request(tmp_path: pathlib.Path) -> None:
+    """With write_reconstructed the back-propagated field is stored too."""
+    generate(small_recipe(2), tmp_path, write_reconstructed=True)
+    reconstructed: dict[int, numpy.ndarray] = load_samples(tmp_path, "reconstructed")
+    assert reconstructed[1].shape == (48, 48)
+    assert numpy.iscomplexobj(reconstructed[1])

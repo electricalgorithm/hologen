@@ -38,13 +38,16 @@ def tiny_recipe() -> Recipe:
     )
 
 
-def generate(recipe: Recipe, output: pathlib.Path) -> None:
+def generate(
+    recipe: Recipe, output: pathlib.Path, write_reconstructed: bool = False
+) -> None:
     """
     Generate a recipe's dataset the way hologen generate does.
 
     Args:
         recipe (Recipe): The recipe to generate.
         output (pathlib.Path): Folder for the dataset files.
+        write_reconstructed (bool): Whether to store the back-propagated field.
     """
     generator = DatasetGenerator(
         DatasetConfig(
@@ -52,6 +55,7 @@ def generate(recipe: Recipe, output: pathlib.Path) -> None:
             base_seed=recipe.dataset.seed,
             hologram_config=recipe.hologram_config(),
             generate_visualization=False,
+            write_reconstructed=write_reconstructed,
         ),
         batch_size=recipe.dataset.batch_size,
     )
@@ -136,7 +140,7 @@ def test_stored_data_has_the_physical_scale(tmp_path: pathlib.Path) -> None:
     K * electrons, and the stored back-propagation is normalised by that.
     """
     recipe = tiny_recipe()
-    generate(recipe, tmp_path)
+    generate(recipe, tmp_path, write_reconstructed=True)
 
     config = recipe.hologram_config()
     # Each object family is recorded with its own exposure.

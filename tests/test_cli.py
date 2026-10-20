@@ -293,3 +293,21 @@ def test_impossible_distance_flags_are_a_clear_error(tmp_path: pathlib.Path) -> 
     )
     assert result.exit_code == 2
     assert "must be positive" in result.output
+
+
+def test_generate_stores_the_reconstruction_only_on_request(
+    tmp_path: pathlib.Path,
+) -> None:
+    """
+    The back-propagated field is written with --reconstructed and not otherwise.
+
+    Args:
+        tmp_path (pathlib.Path): Folder for the datasets.
+    """
+    plain: Result = runner.invoke(app, ["generate", "-o", str(tmp_path / "a"), *TINY])
+    with_field: Result = runner.invoke(
+        app, ["generate", "-o", str(tmp_path / "b"), *TINY, "--reconstructed"]
+    )
+    assert plain.exit_code == 0 and with_field.exit_code == 0
+    assert not list((tmp_path / "a").glob("reconstructed_*.parquet"))
+    assert len(load_samples(tmp_path / "b", "reconstructed")) == 8  # noqa: PLR2004
