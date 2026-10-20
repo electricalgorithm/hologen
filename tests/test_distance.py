@@ -25,7 +25,7 @@ from hologen.dataset.measure import (
 )
 from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
 from hologen.propagator import backwards_propagate
-from hologen.utils import load_samples_from_parquet
+from hologen.dataset.storage import load_samples
 from test_generator import generate
 
 NOMINAL: float = 20.0  # um, the default z_distance
@@ -97,8 +97,8 @@ def test_the_distance_draw_leaves_the_shared_stream_alone(
     direct: Recipe = recipe_with({"z_distance": z_true}, samples=1)
     generate(direct, tmp_path / "direct")
     for kind in ("ground_truth", "hologram"):
-        a: numpy.ndarray = load_samples_from_parquet(tmp_path / "varied", kind, 96)[0]
-        b: numpy.ndarray = load_samples_from_parquet(tmp_path / "direct", kind, 96)[0]
+        a: numpy.ndarray = load_samples(tmp_path / "varied", kind)[0]
+        b: numpy.ndarray = load_samples(tmp_path / "direct", kind)[0]
         numpy.testing.assert_array_equal(a, b)
 
 
@@ -114,12 +114,8 @@ def test_the_same_seed_keeps_its_objects_whatever_the_error(
     generate(recipe_with({}, samples=2), tmp_path / "fixed")
     generate(recipe_with({"z_error": 6.0}, samples=2), tmp_path / "varied")
     for index in range(2):
-        fixed: numpy.ndarray = load_samples_from_parquet(
-            tmp_path / "fixed", "ground_truth", 96
-        )[index]
-        varied: numpy.ndarray = load_samples_from_parquet(
-            tmp_path / "varied", "ground_truth", 96
-        )[index]
+        fixed: numpy.ndarray = load_samples(tmp_path / "fixed", "ground_truth")[index]
+        varied: numpy.ndarray = load_samples(tmp_path / "varied", "ground_truth")[index]
         numpy.testing.assert_array_equal(fixed, varied)
     metadata: DataFrame = pandas.read_parquet(
         tmp_path / "varied" / "metadata_0000.parquet"
@@ -135,11 +131,9 @@ def test_offset_records_at_the_shifted_distance_and_reconstructs_at_nominal(
     direct: Recipe = recipe_with({"z_distance": NOMINAL + 4.0}, samples=1)
     generate(direct, tmp_path / "direct")
 
-    hologram: numpy.ndarray = load_samples_from_parquet(
-        tmp_path / "shifted", "hologram", 96
-    )[0]
+    hologram: numpy.ndarray = load_samples(tmp_path / "shifted", "hologram")[0]
     numpy.testing.assert_array_equal(
-        hologram, load_samples_from_parquet(tmp_path / "direct", "hologram", 96)[0]
+        hologram, load_samples(tmp_path / "direct", "hologram")[0]
     )
 
     # The stored reconstruction is the nominal-distance back-propagation.
@@ -160,9 +154,7 @@ def test_offset_records_at_the_shifted_distance_and_reconstructs_at_nominal(
         config.pixel_size,
         config.resolution,
     )
-    stored: numpy.ndarray = load_samples_from_parquet(
-        tmp_path / "shifted", "reconstructed", 96
-    )[0]
+    stored: numpy.ndarray = load_samples(tmp_path / "shifted", "reconstructed")[0]
     numpy.testing.assert_allclose(stored, expected, atol=1e-6)
 
 

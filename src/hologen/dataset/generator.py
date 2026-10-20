@@ -22,6 +22,7 @@ from hologen.utils import RandomNumberGenerator
 from hologen.noises.bit_depth import adc_gain
 from hologen.propagator import backwards_propagate
 from .configs import DatasetConfig, NoiseConfig
+from .storage import ImageFile
 
 
 class DatasetGenerator:
@@ -164,6 +165,7 @@ class DatasetGenerator:
                         "config_name": config_name,
                         "sample_idx": i,
                         "global_idx": global_idx,
+                        "seed": seed,
                         **details,
                     }
                 )
@@ -296,83 +298,44 @@ class DatasetGenerator:
 
     def _write_batch(self) -> None:
         """
-        Write accumulated samples to separate parquet files and clear buffers.
+        Write the accumulated samples of one batch and clear the buffers.
 
-        Creates separate parquet files for each batch (e.g., ground_truth_0000.parquet,
-        ground_truth_0001.parquet, etc.). This enables true memory-efficient batch writing
-        for large datasets without ever loading the full dataset into memory.
+        Each batch becomes hologram_XXXX.parquet, ground_truth_XXXX.parquet,
+        reconstructed_XXXX.parquet and metadata_XXXX.parquet, in hologen format 2
+        (hologen.dataset.storage). Writing
+        batch by batch keeps memory use bounded for large datasets.
         """
         if not self._ground_truths:
             return
 
         output_dir = Path(self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+        batch_size: int = len(self._ground_truths)
+        sample_ids: list[int] = list(
+            range(self._sample_counter, self._sample_counter + batch_size)
+        )
+        batch_num: int = self._sample_counter // self.batch_size
 
-        # Get array shape from first sample
-        shape = self._ground_truths[0].shape
-        num_pixels = shape[0] * shape[1]
-        batch_size = len(self._ground_truths)
-
-        # Generate sample IDs for this batch
-        sample_ids = range(self._sample_counter, self._sample_counter + batch_size)
-
-        # Calculate batch number for filename
-        batch_num = self._sample_counter // self.batch_size
-
-        # Ground truth (complex field)
-        gt_data = {
-            "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat(
-                [m["config_name"] for m in self._metadata], num_pixels
-            ),
-            "global_idx": np.repeat(
-                [m["global_idx"] for m in self._metadata], num_pixels
-            ),
-            "real": np.concatenate([arr.real.flatten() for arr in self._ground_truths]),
-            "imag": np.concatenate([arr.imag.flatten() for arr in self._ground_truths]),
-        }
-        pd.DataFrame(gt_data).to_parquet(
+        ImageFile.write_fields(
             output_dir / f"ground_truth_{batch_num:04d}.parquet",
-            compression="snappy",
-            index=False,
+            sample_ids,
+            np.stack(self._ground_truths),
+            kind="ground_truth",
         )
-
-        # Hologram (intensity)
-        holo_data = {
-            "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat(
-                [m["config_name"] for m in self._metadata], num_pixels
-            ),
-            "global_idx": np.repeat(
-                [m["global_idx"] for m in self._metadata], num_pixels
-            ),
-            "intensity": np.concatenate([arr.flatten() for arr in self._holograms]),
-        }
-        pd.DataFrame(holo_data).to_parquet(
+        ImageFile.write_holograms(
             output_dir / f"hologram_{batch_num:04d}.parquet",
-            compression="snappy",
-            index=False,
+            sample_ids,
+            np.stack(self._holograms),
         )
-
-        # Reconstructed (complex field)
-        rec_data = {
-            "sample_id": np.repeat(list(sample_ids), num_pixels),
-            "config_name": np.repeat(
-                [m["config_name"] for m in self._metadata], num_pixels
-            ),
-            "global_idx": np.repeat(
-                [m["global_idx"] for m in self._metadata], num_pixels
-            ),
-            "real": np.concatenate([arr.real.flatten() for arr in self._reconstructed]),
-            "imag": np.concatenate([arr.imag.flatten() for arr in self._reconstructed]),
-        }
-        pd.DataFrame(rec_data).to_parquet(
+        ImageFile.write_fields(
             output_dir / f"reconstructed_{batch_num:04d}.parquet",
-            compression="snappy",
-            index=False,
+            sample_ids,
+            np.stack(self._reconstructed),
+            kind="reconstructed",
         )
 
-        # One row per hologram: object family, exposure and clipping.
+        # One row per hologram: group, seed, object family, exposure, clipping
+        # and distances.
         pd.DataFrame(
             [
                 {"sample_id": sid, **meta}
@@ -380,7 +343,7 @@ class DatasetGenerator:
             ]
         ).to_parquet(
             output_dir / f"metadata_{batch_num:04d}.parquet",
-            compression="snappy",
+            compression="zstd",
             index=False,
         )
 

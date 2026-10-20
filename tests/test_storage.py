@@ -3,11 +3,36 @@
 import pathlib
 
 import numpy
+import pandas
 import pyarrow.parquet as pq
 import pytest
 from pandas import DataFrame
 
-from hologen.dataset.storage import FORMAT_VERSION, ImageFile
+from hologen.dataset.recipe import Recipe, recipe_from_dict
+from hologen.dataset.storage import FORMAT_VERSION, ImageFile, load_samples
+from test_generator import generate
+
+
+def small_recipe(samples: int = 4) -> Recipe:
+    """
+    Build a small camera-noise recipe.
+
+    Args:
+        samples (int): Number of holograms.
+
+    Returns:
+        Recipe: A 48 x 48 pixel red blood cell recipe.
+    """
+    return recipe_from_dict(
+        {
+            "geometry": {"resolution": 48},
+            "dataset": {
+                "total_samples": samples,
+                "objects": ["red_blood_cells"],
+                "configurations": ["camera"],
+            },
+        }
+    )
 
 
 def test_holograms_round_trip_as_exact_counts(tmp_path: pathlib.Path) -> None:
@@ -63,3 +88,17 @@ def test_the_old_per_pixel_layout_is_rejected(tmp_path: pathlib.Path) -> None:
     DataFrame({"sample_id": [0] * 4, "intensity": [1.0] * 4}).to_parquet(path)
     with pytest.raises(ValueError, match="regenerate"):
         ImageFile(path)
+
+
+def test_generated_datasets_are_compact_and_complete(tmp_path: pathlib.Path) -> None:
+    """A generated dataset has one row per hologram and the seeds in its metadata."""
+    recipe: Recipe = small_recipe()
+    generate(recipe, tmp_path)
+    holograms: dict[int, numpy.ndarray] = load_samples(tmp_path, "hologram")
+    assert sorted(holograms) == [0, 1, 2, 3]
+    assert holograms[0].shape == (48, 48)
+    assert pq.ParquetFile(tmp_path / "ground_truth_0000.parquet").metadata.num_rows == 4
+    metadata: DataFrame = pandas.read_parquet(tmp_path / "metadata_0000.parquet")
+    assert metadata["seed"].tolist() == [
+        recipe.dataset.seed + index for index in range(4)
+    ]

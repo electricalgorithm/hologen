@@ -18,7 +18,7 @@ from hologen.dataset.recipe import (
     recipe_from_dict,
     recipe_to_toml,
 )
-from hologen.utils import load_samples_from_parquet
+from hologen.dataset.storage import load_samples
 
 matplotlib.use("Agg")
 runner = CliRunner()
@@ -45,7 +45,7 @@ def test_generate_writes_the_dataset_and_its_recipe(tmp_path: pathlib.Path) -> N
     result = runner.invoke(app, ["generate", "--output", str(output), *TINY])
     assert result.exit_code == 0, result.stdout
 
-    holograms = load_samples_from_parquet(output, "hologram", resolution=32)
+    holograms = load_samples(output, "hologram")
     assert len(holograms) == 8
     saved = tomllib.loads((output / "recipe.toml").read_text())
     assert saved["dataset"]["total_samples"] == 8
@@ -68,7 +68,7 @@ def test_generate_uses_only_the_chosen_configurations(tmp_path: pathlib.Path) ->
     assert result.exit_code == 0, result.stdout
 
     names: DataFrame = pandas.read_parquet(
-        output / "hologram_0000.parquet", columns=["config_name"]
+        output / "metadata_0000.parquet", columns=["config_name"]
     )
     assert sorted(names["config_name"].unique()) == [
         "camera_laser_speckle/adherent_cells",

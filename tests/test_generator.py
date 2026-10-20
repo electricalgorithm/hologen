@@ -15,7 +15,7 @@ import pytest
 from hologen import DatasetConfig, DatasetGenerator, InlineHologramSimulator
 from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
 from hologen.noises.bit_depth import adc_gain
-from hologen.utils import load_samples_from_parquet
+from hologen.dataset.storage import load_samples
 
 SAMPLES_PER_CONFIGURATION: int = 2
 
@@ -145,22 +145,15 @@ def test_stored_data_has_the_physical_scale(tmp_path: pathlib.Path) -> None:
         * adc_gain(config.bit_depth, config.saturation_electrons)
     )
     names = pandas.read_parquet(
-        tmp_path / "hologram_0000.parquet", columns=["sample_id", "config_name"]
-    ).drop_duplicates()
+        tmp_path / "metadata_0000.parquet", columns=["sample_id", "config_name"]
+    )
     assert names["config_name"].value_counts().to_dict() == dict.fromkeys(
         recipe.samples_per_group(), SAMPLES_PER_CONFIGURATION
     )
 
-    size: int = config.resolution
-    holograms: dict[int, numpy.ndarray] = load_samples_from_parquet(
-        tmp_path, "hologram", resolution=size
-    )
-    reconstructed: dict[int, numpy.ndarray] = load_samples_from_parquet(
-        tmp_path, "reconstructed", resolution=size
-    )
-    truths: dict[int, numpy.ndarray] = load_samples_from_parquet(
-        tmp_path, "ground_truth", resolution=size
-    )
+    holograms: dict[int, numpy.ndarray] = load_samples(tmp_path, "hologram")
+    reconstructed: dict[int, numpy.ndarray] = load_samples(tmp_path, "reconstructed")
+    truths: dict[int, numpy.ndarray] = load_samples(tmp_path, "ground_truth")
     for sample_id, hologram in holograms.items():
         # Propagation conserves power, so the mean recorded intensity is the
         # background times the mean transmission |O|^2 of this sample's object.
@@ -177,10 +170,7 @@ def test_metadata_records_family_exposure_and_clipping(tmp_path: pathlib.Path) -
     recipe: Recipe = tiny_recipe()
     generate(recipe, tmp_path)
     metadata: DataFrame = pandas.read_parquet(tmp_path / "metadata_0000.parquet")
-    size: int = recipe.geometry.resolution
-    holograms: dict[int, numpy.ndarray] = load_samples_from_parquet(
-        tmp_path, "hologram", resolution=size
-    )
+    holograms: dict[int, numpy.ndarray] = load_samples(tmp_path, "hologram")
 
     assert len(metadata) == recipe.dataset.total_samples
     assert set(metadata["object_family"]) == {"red_blood_cells"}
