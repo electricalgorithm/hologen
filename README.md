@@ -21,11 +21,11 @@ Install the package and its `hologen` command:
 uv tool install .            # or: pip install .
 ```
 
-Generate the dataset with the default, cited recipe (25,000 holograms of 224 x 224
-pixels in four noise configurations):
+Generate the dataset with the default, cited recipe (25,000 holograms of 1024 x 1024
+pixels, about 99 GB, in four noise configurations for each of two cell families):
 
 ```sh
-hologen generate --output dataset-224
+hologen generate --output dataset
 ```
 
 Common options override the recipe; run `hologen generate --help` for all of them:
@@ -114,12 +114,14 @@ objective, EMVA 1288):
 shot noise, dark current, read noise and a 12-bit ADC. The light source adds speckle
 (Goodman's model). The dataset has four configurations of equal size:
 
-| Configuration | Noise | rms deviation from the noise-free hologram |
+| Configuration | Noise | rms deviation from the noise-free hologram, red blood cells / adherent cells |
 |---|---|---|
-| `ideal` | none (reference) | 0.02% |
-| `camera` | shot + dark + read + ADC | 1.4% |
-| `camera_led_speckle` | camera + speckle contrast 0.014 | 2.0% |
-| `camera_laser_speckle` | camera + speckle contrast 0.12 | 12.1% |
+| `ideal` | none (reference) | 0.04% / 0.05% |
+| `camera` | shot + dark + read + ADC | 1.9% / 2.3% |
+| `camera_led_speckle` | camera + speckle contrast 0.014 | 2.4% / 2.7% |
+| `camera_laser_speckle` | camera + speckle contrast 0.12 | 12.9% / 12.3% |
+
+The deviations are in percent of the background, measured with `hologen measure` on 50 holograms per group. The two families differ because each is recorded at its own calibrated exposure (2735 and 1855 e- per pixel).
 
 To see each noise source live, open an interactive explorer:
 
