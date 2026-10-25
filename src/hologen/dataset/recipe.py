@@ -249,14 +249,27 @@ class Objects:
     adherent_absorption: float = _value(
         0.0,
         "1/um of OPD",
-        "Unstained adherent cells are transparent. 0.55 (the absorption test) gives "
-        "a transmission of 0.8 at the measured p95 peak OPD of 0.407 um",
+        "Unstained adherent cells are transparent; no measured absorption of "
+        "stained adherent cells near 532 nm is available, so every set keeps 0",
     )
     haemoglobin_absorption_scale: float = _value(
         1.0,
         "",
         "Factor on the haemoglobin absorption of red blood cells (Prahl 1998, "
         "532 nm); 3 for the absorption test",
+    )
+    red_blood_cell_attempts: int = _value(
+        1000,
+        "",
+        "Random positions tried before red blood cell placement stops. Placement "
+        "without overlap stalls near half the field covered, so a crowded field "
+        "needs more tries; about 10000 reach twice the default density",
+    )
+    adherent_attempts: int = _value(
+        200,
+        "",
+        "Random positions tried before adherent cell placement stops; about 5000 "
+        "reach a coverage of 0.5",
     )
     exposure_percentile: float = _value(
         95.0,
@@ -290,11 +303,11 @@ class Objects:
 
     def __post_init__(self) -> None:
         """
-        Check that the phase and absorption values are physical.
+        Check that the phase, absorption and placement values are usable.
 
         Raises:
-            ValueError: If opd_scale is not positive or an absorption value is
-                negative.
+            ValueError: If opd_scale is not positive, an absorption value is
+                negative or a number of placement attempts is below 1.
         """
         if self.opd_scale <= 0:
             raise ValueError(f"opd_scale must be positive (got {self.opd_scale}).")
@@ -308,6 +321,11 @@ class Objects:
                 "haemoglobin_absorption_scale must not be negative "
                 f"(got {self.haemoglobin_absorption_scale})."
             )
+        for name in ("red_blood_cell_attempts", "adherent_attempts"):
+            if getattr(self, name) < 1:
+                raise ValueError(
+                    f"{name} must be at least 1 (got {getattr(self, name)})."
+                )
 
 
 @dataclasses.dataclass
@@ -489,7 +507,11 @@ class Recipe:
             """
             area: float = (sim.resolution * sim.pixel_size) ** 2
             count: int = int(round(objects.red_blood_cell_density * area))
-            return add_red_blood_cells(sim, count, optics) if count else 0
+            if not count:
+                return 0
+            return add_red_blood_cells(
+                sim, count, optics, max_attempts=objects.red_blood_cell_attempts
+            )
 
         def adherent_cells(sim: InlineHologramSimulator) -> int:
             """
@@ -506,6 +528,7 @@ class Recipe:
                 coverage=objects.adherent_coverage,
                 opd_scale=objects.opd_scale,
                 absorption=objects.adherent_absorption,
+                max_attempts=objects.adherent_attempts,
             )
 
         def ellipses(sim: InlineHologramSimulator) -> int:

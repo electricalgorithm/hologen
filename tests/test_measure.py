@@ -92,6 +92,8 @@ def test_settings_that_move_the_peak_change_the_fingerprint(
         {"dataset": {"configurations": ["ideal"]}},
         {"objects": {"red_blood_cells_background_electrons": 1000.0}},
         {"objects": {"exposure_calibration": "edited by hand"}},
+        {"objects": {"red_blood_cell_attempts": 10000}},
+        {"objects": {"adherent_attempts": 5000}},
     ],
 )
 def test_settings_that_leave_the_peak_alone_keep_the_fingerprint(

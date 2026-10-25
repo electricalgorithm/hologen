@@ -74,7 +74,7 @@ def exposure_fingerprint(recipe: Recipe) -> str:
 
     These are the geometry (including the image size), the speckle of the
     light source, the saturation capacity and the object settings. The distance
-    offset and error are left out. A real camera keeps its exposure when the
+    offset and error and the number of placement attempts are left out. A real camera keeps its exposure when the
     sample sits at the wrong distance, so the exposure is calibrated at the
     nominal distance and holograms recorded elsewhere may clip more often,
     which their metadata records. Camera noise,
@@ -88,11 +88,15 @@ def exposure_fingerprint(recipe: Recipe) -> str:
         str: The first 12 hexadecimal digits of a SHA-256 hash of the settings.
     """
     objects: dict[str, Any] = dataclasses.asdict(recipe.objects)
+    # The placement attempts only matter when a field is asked for more cells
+    # than fit; the requested density and coverage are part of the fingerprint.
     for field in (
         "red_blood_cells_background_electrons",
         "adherent_cells_background_electrons",
         "exposure_calibration",
         "calibration_fingerprint",
+        "red_blood_cell_attempts",
+        "adherent_attempts",
     ):
         objects.pop(field)
     geometry: dict[str, Any] = dataclasses.asdict(recipe.geometry)

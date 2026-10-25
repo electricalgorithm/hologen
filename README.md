@@ -22,7 +22,7 @@ uv tool install .            # or: pip install .
 ```
 
 Generate the dataset with the default, cited recipe (25,000 holograms of 1024 x 1024
-pixels, about 99 GB, in four noise configurations for each of two cell families):
+pixels, about 103 GB, in four noise configurations for each of two cell families):
 
 ```sh
 hologen generate --output dataset

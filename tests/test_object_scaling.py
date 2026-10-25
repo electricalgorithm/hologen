@@ -118,8 +118,54 @@ def test_haemoglobin_scale_multiplies_the_log_transmission() -> None:
         {"opd_scale": -1.0},
         {"adherent_absorption": -0.1},
         {"haemoglobin_absorption_scale": -1.0},
+        {"red_blood_cell_attempts": 0},
+        {"adherent_attempts": 0},
     ],
 )
 def test_impossible_values_are_rejected(objects: dict[str, float]) -> None:
     with pytest.raises(ValueError, match="must"):
         scaled(**objects)
+
+
+def placed(recipe: Recipe, family: str) -> int:
+    """
+    Count the cells the generator places in one field.
+
+    Args:
+        recipe (Recipe): Recipe whose object settings are used.
+        family (str): red_blood_cells or adherent_cells.
+
+    Returns:
+        int: Number of cells placed.
+    """
+    config = recipe.hologram_config()
+    RandomNumberGenerator.set_seed(SEED)
+    sim = InlineHologramSimulator(
+        SIZE, config.pixel_size, config.wavelength, config.numerical_aperture
+    )
+    return recipe.object_families()[family].place(sim)
+
+
+def test_more_attempts_fill_a_crowded_field_further() -> None:
+    """
+    A field asked for more cells than fit gets more of them with more attempts.
+
+    Both requests exceed what random placement without overlap can reach (60
+    percent of the area for red blood cells), so both caps stop it.
+    """
+    crowded: dict[str, float] = {
+        "red_blood_cell_density": 0.0125,
+        "adherent_coverage": 0.7,
+    }
+    few: Recipe = recipe_from_dict({"objects": crowded})
+    many: Recipe = recipe_from_dict(
+        {
+            "objects": {
+                **crowded,
+                "red_blood_cell_attempts": 10000,
+                "adherent_attempts": 5000,
+            }
+        }
+    )
+    assert placed(many, "red_blood_cells") > placed(few, "red_blood_cells")
+    assert placed(many, "adherent_cells") > placed(few, "adherent_cells")
