@@ -1,14 +1,14 @@
 """End-to-end tests of the hologen command-line interface."""
 
-from pandas.core.frame import DataFrame
-from typer.testing import Result
 import pathlib
 import tomllib
 
 import matplotlib
+import matplotlib.image
+import numpy
 import pandas
 import pytest
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 from hologen.cli import app
 from hologen.dataset.measure import exposures_are_current
@@ -67,7 +67,7 @@ def test_generate_uses_only_the_chosen_configurations(tmp_path: pathlib.Path) ->
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.stdout
 
-    names: DataFrame = pandas.read_parquet(
+    names: pandas.DataFrame = pandas.read_parquet(
         output / "metadata_0000.parquet", columns=["config_name"]
     )
     assert sorted(names["config_name"].unique()) == [
@@ -94,7 +94,7 @@ def test_generate_uses_only_the_chosen_object_families(
     ]
     result: Result = runner.invoke(app, args)
     assert result.exit_code == 0, result.stdout
-    metadata: DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
+    metadata: pandas.DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
     assert set(metadata["object_family"]) == {"ellipses"}
     assert len(metadata) == 8
 
@@ -248,6 +248,44 @@ def test_invalid_recipe_file_is_a_clear_error(tmp_path: pathlib.Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "content", ["[camera]\nbit_depth = 40\n", '[dataset]\ntotal_samples = "x"\n']
+)
+def test_bad_recipe_values_stop_generate_before_it_writes(
+    content: str, tmp_path: pathlib.Path
+) -> None:
+    path: pathlib.Path = tmp_path / "bad.toml"
+    path.write_text(content)
+    output: pathlib.Path = tmp_path / "data"
+    result: Result = runner.invoke(
+        app, ["generate", "-o", str(output), "--recipe", str(path), *TINY]
+    )
+    assert result.exit_code == 2
+    assert "Error" in result.output
+    assert not any(output.glob("*.parquet"))
+
+
+def test_negative_seed_is_a_clear_error(tmp_path: pathlib.Path) -> None:
+    result: Result = runner.invoke(
+        app, ["generate", "-o", str(tmp_path / "d"), *TINY, "--seed", "-1"]
+    )
+    assert result.exit_code == 2
+    assert not (tmp_path / "d").exists()
+
+
+def test_explorers_take_an_image(tmp_path: pathlib.Path) -> None:
+    """A wide RGBA image is cropped to its centre square and turned to grey."""
+    image: pathlib.Path = tmp_path / "photo.png"
+    pixels: numpy.ndarray = numpy.random.default_rng(0).random((40, 60, 4))
+    matplotlib.image.imsave(image, pixels)
+    figure: pathlib.Path = tmp_path / "speckle.png"
+    result: Result = runner.invoke(
+        app, ["explore", "speckle", str(image), "--save", str(figure)]
+    )
+    assert result.exit_code == 0, result.output
+    assert figure.stat().st_size > 0
+
+
+@pytest.mark.parametrize(
     "explorer", ["speckle", "shot-noise", "dark-current", "readout"]
 )
 def test_explorers_save_their_figure(explorer: str, tmp_path: pathlib.Path) -> None:
@@ -276,7 +314,7 @@ def test_generate_records_at_the_distance_error_and_offset(
     saved: dict = tomllib.loads((output / "recipe.toml").read_text())
     assert saved["geometry"]["z_error"] == 6.0
     assert saved["geometry"]["z_offset"] == -2.0
-    metadata: DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
+    metadata: pandas.DataFrame = pandas.read_parquet(output / "metadata_0000.parquet")
     assert metadata["z_true"].between(12.0, 24.0).all()
     assert (metadata["z_nominal"] == 20.0).all()
 

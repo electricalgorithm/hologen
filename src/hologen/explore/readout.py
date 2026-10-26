@@ -9,7 +9,7 @@ them out in two steps (EMVA 1288 Release 4.0 Linear, Sec. 2.4, Eq. 14):
   clipped at 2^k - 1 and rounded to whole digital numbers (DN); rounding adds a
   uniform error of 1/sqrt(12) DN, i.e. 1 / (sqrt(12) K) electrons
 
-Shot noise and dark current stay at the dataset's values. Fewer bits mean larger
+Shot noise and dark current stay at the default recipe's values. Fewer bits mean larger
 DN steps: below about 8 bits the steps become visible as a staircase.
 
 Usage:
@@ -27,6 +27,7 @@ from matplotlib.widgets import Slider
 
 import hologen
 from hologen.explore.common import (
+    BACKGROUND_ELECTRONS,
     DARK_CURRENT,
     EXPOSURE_TIME,
     READ_NOISE_SIGMA,
@@ -36,7 +37,6 @@ from hologen.explore.common import (
     show_or_save,
     simulate_intensity,
 )
-from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
 from hologen.noises import (
     add_bit_depth_noise,
     add_dark_current_noise,
@@ -60,7 +60,7 @@ def collect(intensity: numpy.ndarray[float], seed: int) -> numpy.ndarray[float]:
         numpy.ndarray[float]: Electrons per pixel, same shape as intensity.
     """
     hologen.RandomNumberGenerator.set_seed(seed)
-    electrons = add_shot_noise(intensity * DEFAULT_BACKGROUND_ELECTRONS)
+    electrons = add_shot_noise(intensity * BACKGROUND_ELECTRONS)
     return add_dark_current_noise(electrons, DARK_CURRENT * EXPOSURE_TIME)
 
 
@@ -191,7 +191,7 @@ def run(
             f"{title}, {bits}-bit\nK = {gain:.4g} DN/e- ({1 / gain:,.1f} e- per DN)"
         )
 
-        ideal = intensity[row, x] * DEFAULT_BACKGROUND_ELECTRONS * gain
+        ideal = intensity[row, x] * BACKGROUND_ELECTRONS * gain
         ideal_line.set_data(x, ideal)
         step_line.set_data(x, digital[row, x])
         ax_profile.set_xlim(x[0], x[-1])
@@ -203,7 +203,7 @@ def run(
 
         quantisation = 1 / (numpy.sqrt(12) * gain)
         values = [
-            numpy.sqrt(DEFAULT_BACKGROUND_ELECTRONS),
+            numpy.sqrt(BACKGROUND_ELECTRONS),
             numpy.sqrt(dark_mean),
             read_noise,
             quantisation,
@@ -214,7 +214,7 @@ def run(
             text.set_position((text.get_position()[0], max(value, 0.1) * 1.15))
             text.set_text(f"{value:,.1f}")
         ax_budget.set_title(
-            f"Noise at the background ({DEFAULT_BACKGROUND_ELECTRONS:,.0f} e-)\n"
+            f"Noise at the background ({BACKGROUND_ELECTRONS:,.0f} e-)\n"
             f"dataset: {READ_NOISE_SIGMA:g} e- read noise, {DATASET_BITS} bits"
         )
         fig.canvas.draw_idle()

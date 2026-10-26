@@ -9,7 +9,7 @@ size; the same random seed is reused so only the parameters change.
 Usage:
     hologen explore speckle                         # simulated hologram
     hologen explore speckle photo.png               # your own image
-    hologen explore speckle --contrast 0.3 --grain-size 30
+    hologen explore speckle --contrast 0.3 --grain-size 2
     hologen explore speckle --save speckle.png      # save, no window
 """
 
@@ -20,14 +20,14 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from hologen.noises import add_speckle_noise
-from hologen.noises.speckle import generate_speckle_pattern
 from hologen.explore.common import (
     RECIPE,
     load_intensity,
     show_or_save,
     simulate_intensity,
 )
+from hologen.noises import add_speckle_noise
+from hologen.noises.speckle import generate_speckle_pattern
 
 
 def speckled(

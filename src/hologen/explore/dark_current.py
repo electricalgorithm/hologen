@@ -6,7 +6,8 @@ pixel is dark current (e-/s) x exposure time (s), and the dark current roughly
 doubles every T_d degrees (EMVA 1288 Release 4.0 Linear, Sec. 3). The sliders
 change the two physical knobs:
 
-- temperature: the dark current rate, starting from the dataset's 25 C value
+- temperature: the dark current rate, starting at 25 C, the temperature assumed
+  for the recipe's dark current (its source does not state one)
 - exposure time: how long the dark electrons accumulate
 
 The illumination is assumed to be adjusted so the background always collects the
@@ -26,8 +27,7 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from hologen.inline_simulator import DEFAULT_BACKGROUND_ELECTRONS
-from hologen.noises import add_dark_current_noise, add_shot_noise
+from hologen.dataset.recipe import DARK_CURRENT_DOUBLING, DARK_CURRENT_TEMPERATURE
 from hologen.explore.common import (
     DARK_CURRENT,
     EXPOSURE_TIME,
@@ -38,8 +38,7 @@ from hologen.explore.common import (
     show_or_save,
     simulate_intensity,
 )
-
-REFERENCE_TEMPERATURE: float = 25.0  # C, temperature of DARK_CURRENT
+from hologen.noises import add_dark_current_noise, add_shot_noise
 
 
 def dark_current_rate(temperature: float, doubling: float) -> float:
@@ -53,7 +52,7 @@ def dark_current_rate(temperature: float, doubling: float) -> float:
     Returns:
         float: The dark current, in e- per pixel per second.
     """
-    return DARK_CURRENT * 2 ** ((temperature - REFERENCE_TEMPERATURE) / doubling)
+    return DARK_CURRENT * 2 ** ((temperature - DARK_CURRENT_TEMPERATURE) / doubling)
 
 
 def record(
@@ -84,9 +83,9 @@ def record(
 
 def run(
     image: pathlib.Path | None = None,
-    temperature: float = REFERENCE_TEMPERATURE,
+    temperature: float = DARK_CURRENT_TEMPERATURE,
     exposure: float = EXPOSURE_TIME,
-    doubling: float = 9.0,
+    doubling: float = DARK_CURRENT_DOUBLING,
     pixel_size: float = RECIPE.geometry.pixel_size,
     seed: int = 0,
     save: pathlib.Path | None = None,
@@ -105,7 +104,7 @@ def run(
         save (pathlib.Path | None): File to save the figure to instead of opening
             a window.
     """
-    electrons: float = DEFAULT_BACKGROUND_ELECTRONS
+    electrons: float = RECIPE.camera.background_electrons
     if image is None:
         intensity = simulate_intensity(pixel_size, seed)
         title = "Simulated hologram"
@@ -207,7 +206,8 @@ def run(
             text.set_text(f"{value:,.1f}")
         ax_budget.set_title(
             f"Noise budget at {temperature:.0f} C (T_d = {doubling:g} C)\n"
-            f"dataset: {REFERENCE_TEMPERATURE:.0f} C, {EXPOSURE_TIME * 1000:.1f} ms"
+            f"recipe: {DARK_CURRENT_TEMPERATURE:.0f} C (assumed), "
+            f"{EXPOSURE_TIME * 1000:.1f} ms"
         )
         fig.canvas.draw_idle()
 

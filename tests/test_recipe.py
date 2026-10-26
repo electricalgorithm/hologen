@@ -6,6 +6,7 @@ import tomllib
 
 import pytest
 
+from hologen.dataset.measure import exposures_are_current
 from hologen.dataset.recipe import (
     CONFIGURATION_NAMES,
     Recipe,
@@ -83,11 +84,48 @@ def test_partial_file_keeps_the_other_defaults(tmp_path: pathlib.Path) -> None:
         ({"dataset": {"objects": ["neurons"]}}, "Unknown object"),
         ({"dataset": {"objects": []}}, "At least one object"),
         ({"dataset": {"objects": ["ellipses", "ellipses"]}}, "must not repeat"),
+        ({"dataset": 3}, "must be a table"),
+        ({"dataset": {"total_samples": "x"}}, "must be a whole number"),
+        ({"dataset": {"total_samples": 100.0}}, "must be a whole number"),
+        ({"dataset": {"configurations": "camera"}}, "must be a list of strings"),
+        ({"camera": {"read_noise": "3"}}, "must be a number"),
+        ({"camera": {"read_noise": True}}, "must be a number"),
+        ({"objects": {"exposure_calibration": 1}}, "must be a string"),
+        ({"dataset": {"seed": -1}}, "seed must be zero or more"),
+        ({"dataset": {"batch_size": 0}}, "batch_size must be at least 1"),
+        ({"geometry": {"resolution": 4}}, "resolution must be at least 8"),
+        ({"geometry": {"wavelength": 0.0}}, "wavelength must be positive"),
+        ({"geometry": {"numerical_aperture": 1.4}}, "numerical_aperture must be"),
+        ({"geometry": {"num_cells": -1}}, "num_cells must be zero or more"),
+        ({"camera": {"bit_depth": 40}}, "bit_depth must be between 1 and 16"),
+        ({"camera": {"saturation_electrons": 0.0}}, "must be positive"),
+        ({"camera": {"read_noise": -1.0}}, "read_noise must be zero or more"),
+        ({"speckle": {"laser_contrast": 1.5}}, "laser_contrast must be in"),
+        ({"speckle": {"grain_size": 0.0}}, "grain_size must be positive"),
+        ({"objects": {"adherent_coverage": 1.0}}, "adherent_coverage must be in"),
+        ({"objects": {"red_blood_cell_density": -0.1}}, "must be zero or more"),
+        ({"objects": {"exposure_percentile": 0.0}}, "exposure_percentile must be"),
+        ({"objects": {"adherent_cells_background_electrons": 0.0}}, "positive"),
     ],
 )
 def test_invalid_recipes_are_rejected(data: dict, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         recipe_from_dict(data)
+
+
+def test_whole_numbers_are_accepted_for_decimal_values() -> None:
+    """z_distance = 20 in a file means 20.0, so the fingerprint stays the same."""
+    recipe: Recipe = recipe_from_dict({"geometry": {"z_distance": 20}})
+    assert isinstance(recipe.geometry.z_distance, float)
+    assert recipe == default_recipe()
+    assert exposures_are_current(recipe)
+
+
+def test_toml_keeps_quotes_and_backslashes_in_strings() -> None:
+    text: str = 'peak "p95" at C:\\data\\run'
+    recipe: Recipe = recipe_from_dict({"objects": {"exposure_calibration": text}})
+    parsed: dict = tomllib.loads(recipe_to_toml(recipe))
+    assert parsed["objects"]["exposure_calibration"] == text
 
 
 def test_samples_are_split_with_the_remainder_first() -> None:

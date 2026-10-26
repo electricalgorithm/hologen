@@ -25,6 +25,8 @@ from hologen.dataset.measure import (
 )
 from hologen.dataset.recipe import (
     CONFIGURATION_NAMES,
+    DARK_CURRENT_DOUBLING,
+    DARK_CURRENT_TEMPERATURE,
     OBJECT_FAMILY_NAMES,
     Geometry,
     Recipe,
@@ -127,7 +129,8 @@ def generate(
     samples: Annotated[
         int | None,
         typer.Option(
-            help="Total number of holograms, split equally over the configurations. "
+            help="Total number of holograms, split equally over the groups (every "
+            "configuration with every object family). "
             f"(recipe default: {DEFAULTS.dataset.total_samples})",
             min=1,
         ),
@@ -136,7 +139,8 @@ def generate(
         int | None,
         typer.Option(
             help="Base random seed; hologram i uses seed + i. "
-            f"(recipe default: {DEFAULTS.dataset.seed})"
+            f"(recipe default: {DEFAULTS.dataset.seed})",
+            min=0,
         ),
     ] = None,
     resolution: Annotated[
@@ -366,7 +370,9 @@ def calibrate(
     ] = 400,
     seed: Annotated[
         int,
-        typer.Option(help="Seed of the first hologram; keep it apart from datasets."),
+        typer.Option(
+            help="Seed of the first hologram; keep it apart from datasets.", min=0
+        ),
     ] = 90000,
     write: Annotated[
         bool,
@@ -428,7 +434,9 @@ def measure(
     holograms: Annotated[int, typer.Option(help="Holograms per group.", min=1)] = 50,
     seed: Annotated[
         int,
-        typer.Option(help="Seed of the first hologram; keep it apart from datasets."),
+        typer.Option(
+            help="Seed of the first hologram; keep it apart from datasets.", min=0
+        ),
     ] = 50000,
     output: Annotated[
         pathlib.Path | None,
@@ -470,6 +478,24 @@ def measure(
         typer.echo(f"\nTable saved to {output}")
 
 
+def positive(value: float) -> float:
+    """
+    Accept only values above zero, for options whose zero has no meaning.
+
+    Args:
+        value (float): The option value.
+
+    Returns:
+        float: The value unchanged.
+
+    Raises:
+        typer.BadParameter: If the value is zero or negative.
+    """
+    if value <= 0:
+        raise typer.BadParameter(f"must be positive (got {value}).")
+    return value
+
+
 Image = Annotated[
     pathlib.Path | None,
     typer.Argument(
@@ -479,7 +505,7 @@ Image = Annotated[
     ),
 ]
 PixelSize = Annotated[float, typer.Option(help="Pixel size in microns.")]
-Seed = Annotated[int, typer.Option(help="Random seed; same seed, same noise.")]
+Seed = Annotated[int, typer.Option(help="Random seed; same seed, same noise.", min=0)]
 Save = Annotated[
     pathlib.Path | None,
     typer.Option(help="Save the figure to this file instead of opening a window."),
@@ -490,10 +516,19 @@ Save = Annotated[
 def speckle(
     image: Image = None,
     contrast: Annotated[
-        float, typer.Option(help="Speckle contrast std/mean, in (0, 1].")
+        float,
+        typer.Option(
+            help="Speckle contrast std/mean, in (0, 1].",
+            max=1.0,
+            callback=positive,
+        ),
     ] = DEFAULTS.speckle.laser_contrast,
     grain_size: Annotated[
-        float, typer.Option(help="Mean speckle grain size in microns.")
+        float,
+        typer.Option(
+            help="Mean speckle grain size in microns.",
+            callback=positive,
+        ),
     ] = DEFAULTS.speckle.grain_size,
     pixel_size: PixelSize = DEFAULTS.geometry.pixel_size,
     seed: Seed = 0,
@@ -547,13 +582,15 @@ def shot_noise(
 @explore_app.command("dark-current")
 def dark_current(
     image: Image = None,
-    temperature: Annotated[float, typer.Option(help="Sensor temperature in C.")] = 25.0,
+    temperature: Annotated[
+        float, typer.Option(help="Sensor temperature in C.")
+    ] = DARK_CURRENT_TEMPERATURE,
     exposure: Annotated[
         float, typer.Option(help="Exposure time in seconds.")
     ] = DEFAULTS.camera.exposure_time,
     doubling: Annotated[
         float, typer.Option(help="Temperature step in C that doubles the dark current.")
-    ] = 9.0,
+    ] = DARK_CURRENT_DOUBLING,
     pixel_size: PixelSize = DEFAULTS.geometry.pixel_size,
     seed: Seed = 0,
     save: Save = None,

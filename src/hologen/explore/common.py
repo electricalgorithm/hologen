@@ -1,14 +1,17 @@
 """
 Shared helpers for the interactive noise explorers (hologen explore ...).
 
-The values come from the default dataset recipe, so the explorers show exactly
-what the dataset uses.
+The geometry and camera values come from the default dataset recipe. The
+simulated hologram holds first-version ellipses at the ellipse exposure, not
+cells at their calibrated exposures, so it shows each noise source on a
+hologram of the dataset's geometry rather than reproducing a dataset group.
 """
 
 import pathlib
 
 import matplotlib.pyplot as plt
 import numpy
+import typer
 from matplotlib.figure import Figure
 
 import hologen
@@ -19,6 +22,9 @@ RECIPE: Recipe = default_recipe()
 DARK_CURRENT: float = RECIPE.camera.dark_current
 EXPOSURE_TIME: float = RECIPE.camera.exposure_time
 READ_NOISE_SIGMA: float = RECIPE.camera.read_noise
+
+# Background exposure of the simulated ellipse holograms.
+BACKGROUND_ELECTRONS: float = RECIPE.camera.background_electrons
 
 # Saturation capacity of the modelled sensor; pixels collecting more are clipped.
 SATURATION_ELECTRONS: float = RECIPE.camera.saturation_electrons
@@ -67,6 +73,7 @@ def simulate_intensity(pixel_size: float, seed: int) -> numpy.ndarray[float]:
         resolution=geometry.resolution,
         pixel_size=pixel_size,
         wavelength=geometry.wavelength,
+        numerical_aperture=geometry.numerical_aperture,
     )
     add_random_cells(sim, num_cells=geometry.num_cells)
     return sim.generate_hologram(
@@ -88,4 +95,4 @@ def show_or_save(fig: Figure, save: pathlib.Path | None) -> None:
         return
     fig.savefig(save, dpi=100)
     plt.close(fig)
-    print(f"Saved {save}")
+    typer.echo(f"Saved {save}")

@@ -2,25 +2,27 @@
 The dataset recipe, which holds every physical value used to generate a dataset.
 
 Each value carries its unit and source, and the noise configurations and object
-families are built from them. A recipe can be written to and read from a TOML file, so a dataset is reproducible
-from one versioned file. Values missing from a file keep their defaults.
+families are built from them. A recipe can be written to and read from a TOML
+file, so a dataset is reproducible from one versioned file. Values missing from
+a file keep their defaults.
 """
 
 import dataclasses
+import json
 import pathlib
 import tomllib
 from typing import Any
 
 from hologen.dataset.configs import HologramConfig, NoiseConfig
-from hologen.objects.adherent_cells import add_adherent_cells
-from hologen.objects.families import ObjectFamily
-from hologen.objects.random_cells import add_random_cells
-from hologen.objects.red_blood_cells import RedBloodCellOptics, add_red_blood_cells
 from hologen.inline_simulator import (
     DEFAULT_BACKGROUND_ELECTRONS,
     DEFAULT_SATURATION_ELECTRONS,
     InlineHologramSimulator,
 )
+from hologen.objects.adherent_cells import add_adherent_cells
+from hologen.objects.families import ObjectFamily
+from hologen.objects.random_cells import add_random_cells
+from hologen.objects.red_blood_cells import RedBloodCellOptics, add_red_blood_cells
 
 # Noise configurations, from the noise-free reference to the noisiest recording.
 CONFIGURATION_NAMES: tuple[str, ...] = (
@@ -37,6 +39,12 @@ OBJECT_FAMILY_NAMES: tuple[str, ...] = (
     "ellipses",
 )
 
+# Temperature model of the dark-current explorer, not part of a recipe. The source
+# of Camera.dark_current does not state its sensor temperature, so 25 C is assumed.
+# The doubling step is typical of CMOS sensors; EMVA 1288 measures it per camera.
+DARK_CURRENT_TEMPERATURE: float = 25.0  # C
+DARK_CURRENT_DOUBLING: float = 9.0  # C
+
 
 def _value(default: Any, unit: str, source: str) -> Any:
     """
@@ -51,6 +59,23 @@ def _value(default: Any, unit: str, source: str) -> Any:
         Any: A dataclass field that keeps the unit and source as metadata.
     """
     return dataclasses.field(default=default, metadata={"unit": unit, "source": source})
+
+
+def _check(owner: object, name: str, valid: bool, rule: str) -> None:
+    """
+    Reject a recipe value that breaks its rule.
+
+    Args:
+        owner (object): Recipe section that holds the value.
+        name (str): Name of the value.
+        valid (bool): Whether the value follows the rule.
+        rule (str): The rule, completing "<name> must be ...".
+
+    Raises:
+        ValueError: If valid is False.
+    """
+    if not valid:
+        raise ValueError(f"{name} must be {rule} (got {getattr(owner, name)}).")
 
 
 @dataclasses.dataclass
@@ -110,12 +135,24 @@ class Geometry:
 
     def __post_init__(self) -> None:
         """
-        Check that every recording distance lies behind the object.
+        Check the optics, and that every recording distance lies behind the object.
 
         Raises:
-            ValueError: If z_error is negative, or if the shortest recording
+            ValueError: If the image is smaller than 8 pixels, a size, the
+                magnification or the wavelength is not positive, the NA is
+                outside (0, 1], z_error is negative, or the shortest recording
                 distance is not positive.
         """
+        _check(self, "resolution", self.resolution >= 8, "at least 8 pixels")
+        for name in ("sensor_pixel_size", "magnification", "wavelength"):
+            _check(self, name, getattr(self, name) > 0, "positive")
+        _check(
+            self,
+            "numerical_aperture",
+            0 < self.numerical_aperture <= 1,
+            "in (0, 1] for an objective in air",
+        )
+        _check(self, "num_cells", self.num_cells >= 0, "zero or more")
         if self.z_error < 0:
             raise ValueError(f"z_error must not be negative (got {self.z_error}).")
         shortest: float = self.z_distance + self.z_offset - self.z_error
@@ -179,6 +216,26 @@ class Camera:
         "Laser in-line holographic microscopy, Wdowiak et al., arXiv:2508.15419",
     )
 
+    def __post_init__(self) -> None:
+        """
+        Check that the camera values describe a working sensor.
+
+        Raises:
+            ValueError: If an exposure or the saturation capacity is not
+                positive, a noise value or the exposure time is negative, or the
+                bit depth does not fit the 16-bit hologram files.
+        """
+        for name in ("background_electrons", "saturation_electrons"):
+            _check(self, name, getattr(self, name) > 0, "positive")
+        _check(
+            self,
+            "bit_depth",
+            1 <= self.bit_depth <= 16,
+            "between 1 and 16, since holograms are stored as 16-bit counts",
+        )
+        for name in ("read_noise", "dark_current", "exposure_time"):
+            _check(self, name, getattr(self, name) >= 0, "zero or more")
+
     @property
     def dark_electrons(self) -> float:
         """
@@ -211,6 +268,18 @@ class Speckle:
         "HeNe laser illumination, Hughes, arXiv:2006.09296 (2020); C = sigma/<I> "
         "as in Bianco et al., Light Sci. Appl. 7:48 (2018)",
     )
+
+    def __post_init__(self) -> None:
+        """
+        Check the grain size and the speckle contrasts.
+
+        Raises:
+            ValueError: If the grain size is not positive or a contrast is
+                outside (0, 1]; fully developed speckle has a contrast of 1.
+        """
+        _check(self, "grain_size", self.grain_size > 0, "positive")
+        for name in ("led_contrast", "laser_contrast"):
+            _check(self, name, 0 < getattr(self, name) <= 1, "in (0, 1]")
 
 
 @dataclasses.dataclass
@@ -303,12 +372,32 @@ class Objects:
 
     def __post_init__(self) -> None:
         """
-        Check that the phase, absorption and placement values are usable.
+        Check that the content, phase, absorption and exposure values are usable.
 
         Raises:
-            ValueError: If opd_scale is not positive, an absorption value is
-                negative or a number of placement attempts is below 1.
+            ValueError: If the density is negative, the coverage is outside
+                [0, 1), opd_scale is not positive, an absorption value is
+                negative, a number of placement attempts is below 1, the
+                percentile is outside (0, 100] or an exposure is not positive.
         """
+        _check(
+            self,
+            "red_blood_cell_density",
+            self.red_blood_cell_density >= 0,
+            "zero or more",
+        )
+        _check(self, "adherent_coverage", 0 <= self.adherent_coverage < 1, "in [0, 1)")
+        _check(
+            self,
+            "exposure_percentile",
+            0 < self.exposure_percentile <= 100,
+            "in (0, 100]",
+        )
+        for name in (
+            "red_blood_cells_background_electrons",
+            "adherent_cells_background_electrons",
+        ):
+            _check(self, name, getattr(self, name) > 0, "positive")
         if self.opd_scale <= 0:
             raise ValueError(f"opd_scale must be positive (got {self.opd_scale}).")
         if self.adherent_absorption < 0:
@@ -333,7 +422,9 @@ class Dataset:
     """Size, randomness and noise configurations of the generated dataset."""
 
     total_samples: int = _value(
-        25000, "holograms", "Split equally over the configurations"
+        25000,
+        "holograms",
+        "Split equally over the groups, every configuration with every object family",
     )
     seed: int = _value(10000, "", "Base seed; hologram i uses seed + i")
     batch_size: int = _value(250, "holograms per file", "Parquet batch size")
@@ -358,8 +449,12 @@ class Dataset:
 
         Raises:
             ValueError: If a configuration or object family is unknown, missing
-                or repeated, or if there are fewer samples than groups.
+                or repeated, if there are fewer samples than groups, or if the
+                seed is negative or the batch size below 1.
         """
+        _check(self, "seed", self.seed >= 0, "zero or more")
+        _check(self, "batch_size", self.batch_size >= 1, "at least 1")
+
         # Check if any unknown configuration type is given.
         unknown: list[str] = [
             c for c in self.configurations if c not in CONFIGURATION_NAMES
@@ -634,14 +729,16 @@ def recipe_from_dict(data: dict[str, Any]) -> Recipe:
         Recipe: The recipe with the given values.
 
     Raises:
-        ValueError: If a section or key is unknown, or the dataset section is
-            invalid.
+        ValueError: If a section or key is unknown, a value has the wrong type
+            or is out of range, or the dataset section is invalid.
     """
     defaults: Recipe = default_recipe()
     sections: dict[str, Any] = {}
     for section_name, values in data.items():
         if section_name not in {f.name for f in dataclasses.fields(Recipe)}:
             raise ValueError(f"Unknown recipe section [{section_name}].")
+        if not isinstance(values, dict):
+            raise ValueError(f"[{section_name}] must be a table of values.")
         section: Any = getattr(defaults, section_name)
         known: set[str] = {f.name for f in dataclasses.fields(section)}
         unknown: list[str] = sorted(set(values) - known)
@@ -650,8 +747,52 @@ def recipe_from_dict(data: dict[str, Any]) -> Recipe:
                 f"Unknown key(s) {unknown} in [{section_name}]; expected one of "
                 f"{sorted(known)}."
             )
-        sections[section_name] = dataclasses.replace(section, **values)
+        checked: dict[str, Any] = {
+            key: _typed(section_name, key, value, getattr(section, key))
+            for key, value in values.items()
+        }
+        sections[section_name] = dataclasses.replace(section, **checked)
     return dataclasses.replace(defaults, **sections)
+
+
+def _typed(section_name: str, key: str, value: Any, default: Any) -> Any:
+    """
+    Check that a value from a file has the type of its default.
+
+    A whole number is accepted for a decimal value and turned into a float, so
+    `z_distance = 20` means the same as `z_distance = 20.0`, also for the
+    exposure fingerprint.
+
+    Args:
+        section_name (str): Section of the value, for the error message.
+        key (str): Name of the value.
+        value (Any): The value read from the file.
+        default (Any): The default value, whose type the value must have.
+
+    Returns:
+        Any: The value, as a float where the default is a float.
+
+    Raises:
+        ValueError: If the value has another type than its default.
+    """
+    expected: str
+    if isinstance(default, float):
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        expected = "a number"
+    elif isinstance(default, int):
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        expected = "a whole number"
+    elif isinstance(default, str):
+        if isinstance(value, str):
+            return value
+        expected = "a string"
+    else:
+        if isinstance(value, list) and all(isinstance(v, str) for v in value):
+            return value
+        expected = "a list of strings"
+    raise ValueError(f"{key} in [{section_name}] must be {expected} (got {value!r}).")
 
 
 def _toml_value(value: Any) -> str:
@@ -665,7 +806,9 @@ def _toml_value(value: Any) -> str:
         str: The value as TOML.
     """
     if isinstance(value, str):
-        return f'"{value}"'
+        # A JSON string is a valid TOML basic string, with quotes and
+        # backslashes escaped.
+        return json.dumps(value, ensure_ascii=False)
     if isinstance(value, list):
         return "[" + ", ".join(_toml_value(item) for item in value) + "]"
     return repr(value)
