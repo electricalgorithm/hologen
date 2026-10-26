@@ -11,7 +11,6 @@ from hologen.inline_simulator import (
     DEFAULT_SATURATION_ELECTRONS,
 )
 
-
 # Second seed word of the distance draw, so it never shares a stream with the
 # objects and the noise of the same hologram.
 DISTANCE_STREAM: Final[int] = 7
@@ -44,7 +43,8 @@ class NoiseConfig:
             0 < self.speckle_contrast <= 1 and self.speckle_grain_size > 0
         ):
             raise ValueError(
-                "speckle_contrast must be in (0, 1] and speckle_grain_size must be positive."
+                "speckle_contrast must be in (0, 1] and speckle_grain_size must be "
+                "positive."
             )
 
         if self.read and not self.read_noise_sigma:

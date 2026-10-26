@@ -6,21 +6,21 @@ with different noise configurations, making it easy for consumers to create
 custom datasets for machine learning or research purposes.
 """
 
-from hologen.dataset.configs import HologramConfig
-from typing import Literal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from hologen.dataset.configs import HologramConfig
 from hologen.inline_simulator import InlineHologramSimulator
+from hologen.noises.bit_depth import adc_gain
 from hologen.objects import add_random_cells
 from hologen.objects.families import ObjectFamily
-from hologen.utils import RandomNumberGenerator
-from hologen.noises.bit_depth import adc_gain
 from hologen.propagator import backwards_propagate
+from hologen.utils import RandomNumberGenerator
+
 from .configs import DatasetConfig, NoiseConfig
 from .storage import ImageFile
 
@@ -35,7 +35,11 @@ class DatasetGenerator:
 
     Examples:
         >>> recipe = default_recipe()
-        >>> config = DatasetConfig(output_dir="dataset", base_seed=42, hologram_config=recipe.hologram_config())
+        >>> config = DatasetConfig(
+        ...     output_dir="dataset",
+        ...     base_seed=42,
+        ...     hologram_config=recipe.hologram_config(),
+        ... )
         >>> # For large datasets, use smaller batch_size to limit memory usage
         >>> generator = DatasetGenerator(config, batch_size=50)
         >>> generator.add_config("camera", num_samples=10, noise=recipe.camera_noise())
@@ -89,7 +93,8 @@ class DatasetGenerator:
         Examples:
             >>> generator = DatasetGenerator(config)
             >>> generator.add_config("clean", 100, NoiseConfig(...))
-            >>> generator.add_config("noisy", 100, NoiseConfig(speckle=True, shot=True, ...))
+            >>> noisy = NoiseConfig(speckle=True, shot=True, ...)
+            >>> generator.add_config("noisy", 100, noisy)
         """
         if name in self._configs:
             raise ValueError(f"Configuration '{name}' already exists")
@@ -113,7 +118,8 @@ class DatasetGenerator:
         """
         if not self._configs:
             raise ValueError(
-                "No configurations added. Use add_config() to add configurations before generating."
+                "No configurations added. Use add_config() to add configurations "
+                "before generating."
             )
 
         output_dir = Path(self.config.output_dir)
@@ -135,7 +141,8 @@ class DatasetGenerator:
             if verbose:
                 noise_desc: str = self._describe_noise(noise_config)
                 print(
-                    f"  Generating {num_samples} samples: {config_name} ({noise_desc})..."
+                    f"  Generating {num_samples} samples: {config_name} "
+                    f"({noise_desc})..."
                 )
 
             for i in range(num_samples):
@@ -437,7 +444,8 @@ class DatasetGenerator:
                 np.abs(reconstructed), cmap="gray", origin="lower", vmin=0.8, vmax=1.0
             )
             axes[row, 3].set_title(
-                f"{config_name}\nReconstructed Object (Amplitude)\n(Artifacts from zero-phase assumption)"
+                f"{config_name}\nReconstructed Object (Amplitude)\n"
+                "(Artifacts from zero-phase assumption)"
             )
             axes[row, 3].axis("off")
             plt.colorbar(im4, ax=axes[row, 3])
@@ -455,7 +463,8 @@ class DatasetGenerator:
                 vmax=phase_range_rec,
             )
             axes[row, 4].set_title(
-                f"{config_name}\nReconstructed Object (Phase)\n(Artifacts from zero-phase assumption)"
+                f"{config_name}\nReconstructed Object (Phase)\n"
+                "(Artifacts from zero-phase assumption)"
             )
             axes[row, 4].axis("off")
             plt.colorbar(im5, ax=axes[row, 4])

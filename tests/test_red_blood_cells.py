@@ -115,7 +115,11 @@ def test_cell_size_varies_with_the_red_cell_distribution_width() -> None:
 
 
 def test_coordinate_grid_spacing_is_the_pixel_size() -> None:
-    """Regression test: linspace spaced pixels length / (N - 1) apart (0.45% too far at 224)."""
+    """
+    Regression test: linspace spaced pixels length / (N - 1) apart.
+
+    That put them 0.45% too far apart at 224 pixels.
+    """
     grid = create_coordinate_grid(224, PIXEL)
     numpy.testing.assert_allclose(numpy.diff(grid.X[0]), PIXEL)
     assert grid.X[0, 112] == 0.0

@@ -100,20 +100,24 @@ def main() -> None:
     for key, unit in [("diameter", "um"), ("aspect", ""), ("peak_opd", "um")]:
         values = [r[key] for r in rows if numpy.isfinite(r[key]) and r[key] > 0]
         print(
-            f"{key} ({unit}): lognormal {lognormal(values)}; p5-p95 {numpy.percentile(values, 5):.3f}-{numpy.percentile(values, 95):.3f}"
+            f"{key} ({unit}): lognormal {lognormal(values)}; p5-p95 "
+            f"{numpy.percentile(values, 5):.3f}-{numpy.percentile(values, 95):.3f}"
         )
     fills = [r["fill"] for r in rows if numpy.isfinite(r["fill"])]
     print(
-        f"fill (mean OPD / peak OPD): median {numpy.median(fills):.3f}, p10-p90 {numpy.percentile(fills, 10):.3f}-{numpy.percentile(fills, 90):.3f}"
+        f"fill (mean OPD / peak OPD): median {numpy.median(fills):.3f}, p10-p90 "
+        f"{numpy.percentile(fills, 10):.3f}-{numpy.percentile(fills, 90):.3f}"
     )
     print(
-        f"field coverage by cells: median {numpy.median(coverage):.3f}, p10-p90 {numpy.percentile(coverage, 10):.3f}-{numpy.percentile(coverage, 90):.3f}"
+        f"field coverage by cells: median {numpy.median(coverage):.3f}, p10-p90 "
+        f"{numpy.percentile(coverage, 10):.3f}-{numpy.percentile(coverage, 90):.3f}"
     )
     peak = numpy.array([r["peak_opd"] for r in rows])
     diameter = numpy.array([r["diameter"] for r in rows])
     ok = (peak > 0) & (diameter > 0)
     print(
-        f"correlation of log diameter and log peak OPD: {numpy.corrcoef(numpy.log(diameter[ok]), numpy.log(peak[ok]))[0, 1]:.3f}"
+        "correlation of log diameter and log peak OPD: "
+        f"{numpy.corrcoef(numpy.log(diameter[ok]), numpy.log(peak[ok]))[0, 1]:.3f}"
     )
 
 

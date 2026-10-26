@@ -1,7 +1,8 @@
 """Free-space propagation with the angular spectrum method."""
 
 import numpy
-from scipy.fft import fft2, ifft2, fftshift, ifftshift
+from scipy.fft import fft2, fftshift, ifft2, ifftshift
+
 import hologen.utils as utils
 
 

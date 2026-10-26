@@ -9,12 +9,12 @@ import numpy
 import pytest
 
 from hologen import InlineHologramSimulator, RandomNumberGenerator
+from hologen.dataset.recipe import default_recipe
 from hologen.inline_simulator import (
     DEFAULT_SATURATION_ELECTRONS,
 )
 from hologen.noises import add_bit_depth_noise, add_read_noise
 from hologen.noises.bit_depth import adc_gain
-from hologen.dataset.recipe import default_recipe
 from hologen.objects import add_random_cells
 
 SHAPE: tuple[int, int] = (256, 256)

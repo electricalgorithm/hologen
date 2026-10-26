@@ -1,7 +1,8 @@
 """Coordinate, polar and frequency grids of the simulated planes."""
 
-import numpy
 import dataclasses
+
+import numpy
 
 
 @dataclasses.dataclass

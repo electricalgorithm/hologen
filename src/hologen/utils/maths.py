@@ -1,7 +1,8 @@
 """Zernike polynomials and the angular spectrum transfer function."""
 
-import numpy
 import math
+
+import numpy
 
 from .domains import FrequencyGrid, create_frequency_grid
 

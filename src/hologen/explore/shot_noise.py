@@ -24,7 +24,6 @@ import numpy
 from matplotlib.widgets import Slider
 
 import hologen
-from hologen.noises import add_shot_noise
 from hologen.explore.common import (
     RECIPE,
     SATURATION_ELECTRONS,
@@ -32,6 +31,7 @@ from hologen.explore.common import (
     show_or_save,
     simulate_intensity,
 )
+from hologen.noises import add_shot_noise
 
 
 def record(

@@ -8,6 +8,7 @@
 
 import argparse
 from pathlib import Path
+
 from huggingface_hub import HfApi
 
 
@@ -55,7 +56,8 @@ def main() -> None:
         print(f"Note on repo creation: {e}")
 
     print(
-        f"Uploading files from {args.dataset_path} to {args.repo_id} using upload_large_folder..."
+        f"Uploading files from {args.dataset_path} to {args.repo_id} "
+        "using upload_large_folder..."
     )
     try:
         api.upload_large_folder(

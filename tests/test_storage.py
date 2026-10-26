@@ -7,10 +7,10 @@ import pandas
 import pyarrow.parquet as pq
 import pytest
 from pandas import DataFrame
+from test_generator import generate
 
 from hologen.dataset.recipe import Recipe, recipe_from_dict
 from hologen.dataset.storage import FORMAT_VERSION, ImageFile, load_samples
-from test_generator import generate
 
 
 def small_recipe(samples: int = 4) -> Recipe:
@@ -75,7 +75,7 @@ def test_every_file_records_its_format(tmp_path: pathlib.Path) -> None:
 
 
 def test_counts_outside_16_bits_are_rejected(tmp_path: pathlib.Path) -> None:
-    """Values that do not fit uint16 exactly would be silently changed, so they are refused."""
+    """Counts that do not fit uint16 exactly are refused, as they would change."""
     with pytest.raises(ValueError, match="whole camera counts"):
         ImageFile.write_holograms(
             tmp_path / "h.parquet", [0], numpy.full((1, 2, 2), 0.5)
@@ -91,7 +91,11 @@ def test_the_old_per_pixel_layout_is_rejected(tmp_path: pathlib.Path) -> None:
 
 
 def test_generated_datasets_are_compact_and_complete(tmp_path: pathlib.Path) -> None:
-    """A generated dataset has one row per hologram, seeds in the metadata, no reconstruction."""
+    """
+    A generated dataset is compact and complete.
+
+    It has one row per hologram, the seeds in the metadata and no reconstruction.
+    """
     recipe: Recipe = small_recipe()
     generate(recipe, tmp_path)
     assert not (tmp_path / "reconstructed_0000.parquet").exists()

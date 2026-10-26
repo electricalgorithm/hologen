@@ -9,6 +9,7 @@ current roughly doubles with every T_d degrees of temperature (Sec. 3.2, Eq. 31)
 """
 
 import numpy
+
 import hologen.utils as utils
 
 

@@ -5,17 +5,17 @@ Every noise configuration must reach the simulator unchanged, and the stored
 reconstruction must have the physical scale.
 """
 
-from pandas.core.frame import DataFrame
 import pathlib
 
 import numpy
 import pandas
 import pytest
+from pandas.core.frame import DataFrame
 
 from hologen import DatasetConfig, DatasetGenerator, InlineHologramSimulator
 from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
-from hologen.noises.bit_depth import adc_gain
 from hologen.dataset.storage import load_samples
+from hologen.noises.bit_depth import adc_gain
 
 SAMPLES_PER_CONFIGURATION: int = 2
 

@@ -5,8 +5,8 @@ The exposure is the largest background at which q percent of holograms keep thei
 brightest point plus 3 sigma of shot noise below saturation.
 """
 
-from typing import Any
 import math
+from typing import Any
 
 import numpy
 import pytest

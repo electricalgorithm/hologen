@@ -2,9 +2,9 @@
 
 import numpy as np
 
-import hologen.utils as utils
 import hologen.noises as noises
 import hologen.propagator as propagator
+import hologen.utils as utils
 
 # Saturation capacity of the modelled sensor, the Sony IMX183 CMOS (2.4 um pixels)
 # of the magnified in-line setup of Wdowiak et al., arXiv:2508.15419 (2025):
@@ -44,7 +44,8 @@ class InlineHologramSimulator:
             resolution (int): Number of pixels (NxN grid).
             pixel_size (float): Physical size of one pixel in microns, in the object
                 plane (sensor pixel divided by the magnification when magnified).
-            wavelength (float): Wavelength of the light in microns (e.g., 0.532 for green).
+            wavelength (float): Wavelength of the light in microns (e.g., 0.532
+                for green).
             numerical_aperture (float | None): NA of the imaging objective of a
                 magnified setup; None for a lensless setup without a pupil.
         """

@@ -1,11 +1,12 @@
 """Random elliptical phase objects, the first-version "cells" kept as a baseline."""
 
 from numpy import cos as npCos
-from numpy import sin as npSin
 from numpy import pi as npPi
+from numpy import sin as npSin
 from numpy.random import Generator as npGenerator
-from hologen.utils import RandomNumberGenerator
+
 from hologen.inline_simulator import InlineHologramSimulator
+from hologen.utils import RandomNumberGenerator
 
 
 def add_random_cells(

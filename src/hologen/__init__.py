@@ -1,14 +1,14 @@
 """hologen, a simulator of in-line holograms with a physical camera model."""
 
-from .inline_simulator import InlineHologramSimulator
+from . import objects as Objects
 from .dataset import (
     DatasetConfig,
     DatasetGenerator,
     HologramConfig,
     NoiseConfig,
 )
+from .inline_simulator import InlineHologramSimulator
 from .utils import RandomNumberGenerator
-from . import objects as Objects
 
 __all__ = [
     "InlineHologramSimulator",

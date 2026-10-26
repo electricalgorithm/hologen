@@ -74,10 +74,10 @@ def exposure_fingerprint(recipe: Recipe) -> str:
 
     These are the geometry (including the image size), the speckle of the
     light source, the saturation capacity and the object settings. The distance
-    offset and error and the number of placement attempts are left out. A real camera keeps its exposure when the
-    sample sits at the wrong distance, so the exposure is calibrated at the
-    nominal distance and holograms recorded elsewhere may clip more often,
-    which their metadata records. Camera noise,
+    offset and error and the number of placement attempts are left out. A real
+    camera keeps its exposure when the sample sits at the wrong distance, so the
+    exposure is calibrated at the nominal distance and holograms recorded
+    elsewhere may clip more often, which their metadata records. Camera noise,
     the noise configurations and the dataset size do not change the brightest
     point of a noise-free hologram, so they are left out.
 
@@ -278,7 +278,8 @@ def calibration_table(calibrations: list[ExposureCalibration]) -> str:
     for c in calibrations:
         lines.append(
             f"| {c.family} | {c.peak_median:.2f}x | {c.peak_percentile:.2f}x | "
-            f"{c.peak_max:.2f}x | {c.exposure:.0f} | {100 / numpy.sqrt(c.exposure):.2f} |"
+            f"{c.peak_max:.2f}x | {c.exposure:.0f} | "
+            f"{100 / numpy.sqrt(c.exposure):.2f} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -294,8 +295,9 @@ def groups_table(rows: list[GroupStatistics]) -> str:
         str: A Markdown table with one row per group.
     """
     lines: list[str] = [
-        "| group | exposure (e-) | noise (rms, % of background) | normalised background, "
-        "mean (%) | normalised background, median (%) | holograms clipping (%) | "
+        "| group | exposure (e-) | noise (rms, % of background) | "
+        "normalised background, mean (%) | normalised background, median (%) | "
+        "holograms clipping (%) | "
         "clipped pixels when clipping (%) |",
         "|---|---|---|---|---|---|---|",
     ]

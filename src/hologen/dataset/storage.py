@@ -20,7 +20,9 @@ FORMAT_VERSION: str = "2"
 UNITS: dict[str, str] = {
     "hologram": "digital numbers of the camera's ADC",
     "ground_truth": "complex object field relative to the illumination",
-    "reconstructed": "field back-propagated at the nominal distance, relative to the illumination",
+    "reconstructed": (
+        "field back-propagated at the nominal distance, relative to the illumination"
+    ),
 }
 
 
@@ -53,8 +55,8 @@ class ImageFile:
         metadata: dict[bytes, bytes] = self._file.schema_arrow.metadata or {}
         if metadata.get(b"hologen.format") != FORMAT_VERSION.encode():
             raise ValueError(
-                f"{path} was written before hologen format {FORMAT_VERSION} (one pixel per "
-                "row); regenerate the dataset with the current hologen."
+                f"{path} was written before hologen format {FORMAT_VERSION} "
+                "(one pixel per row); regenerate the dataset with the current hologen."
             )
         self.kind: str = metadata[b"hologen.kind"].decode()
         height: str

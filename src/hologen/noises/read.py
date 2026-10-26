@@ -8,6 +8,7 @@ electrons, before the analog-to-digital conversion.
 """
 
 import numpy
+
 import hologen.utils as utils
 
 

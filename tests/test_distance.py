@@ -15,6 +15,7 @@ import numpy
 import pandas
 import pytest
 from pandas import DataFrame
+from test_generator import generate
 
 from hologen.dataset.configs import HologramConfig
 from hologen.dataset.exposure import peak_ratios
@@ -24,9 +25,8 @@ from hologen.dataset.measure import (
     measure_groups,
 )
 from hologen.dataset.recipe import Recipe, default_recipe, recipe_from_dict
-from hologen.propagator import backwards_propagate
 from hologen.dataset.storage import load_samples
-from test_generator import generate
+from hologen.propagator import backwards_propagate
 
 NOMINAL: float = 20.0  # um, the default z_distance
 

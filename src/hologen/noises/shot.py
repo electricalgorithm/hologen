@@ -11,6 +11,7 @@ normalised intensity: the noise depends on the absolute count.
 """
 
 import numpy
+
 import hologen.utils as utils
 
 
